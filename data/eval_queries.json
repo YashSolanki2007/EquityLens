@@ -1,0 +1,152 @@
+[
+  {
+    "query": "Companies that operate data centers or provide colocation and interconnection services",
+    "expected_relevant_tickers": ["DLR", "IRM"],
+    "expected_excluded_tickers": ["KO", "MCD", "PFE"],
+    "notes": "Direct data-center operators; IRM has a data-center segment."
+  },
+  {
+    "query": "Suppliers of power, cooling, or networking equipment for data centers",
+    "expected_relevant_tickers": ["VRT", "ANET", "ETN"],
+    "expected_excluded_tickers": ["HCA", "TJX"],
+    "notes": "Data-center supply chain rather than operators."
+  },
+  {
+    "query": "Companies that manufacture servers or enterprise IT hardware",
+    "expected_relevant_tickers": ["DELL", "HPE", "IBM"],
+    "expected_excluded_tickers": ["DUK", "NKE"],
+    "notes": ""
+  },
+  {
+    "query": "Railroad companies moving freight across the United States",
+    "expected_relevant_tickers": ["UNP", "NSC"],
+    "expected_excluded_tickers": ["DAL", "UPS"],
+    "notes": "Rail specifically, not airlines or parcel."
+  },
+  {
+    "query": "Defense contractors building military aircraft, missiles, or defense systems",
+    "expected_relevant_tickers": ["LMT", "NOC", "GD", "RTX"],
+    "expected_excluded_tickers": ["CAT", "DE"],
+    "notes": ""
+  },
+  {
+    "query": "Companies with significant exposure to copper mining or copper prices",
+    "expected_relevant_tickers": ["FCX"],
+    "expected_excluded_tickers": ["JPM", "DIS"],
+    "notes": "FCX is the only copper miner in the universe."
+  },
+  {
+    "query": "Pharmaceutical companies developing prescription drugs",
+    "expected_relevant_tickers": ["LLY", "PFE", "MRK", "ABBV", "BMY"],
+    "expected_excluded_tickers": ["HCA", "CVS"],
+    "notes": "Drug developers, not providers or pharmacies."
+  },
+  {
+    "query": "Health insurers and managed care organizations",
+    "expected_relevant_tickers": ["UNH", "ELV"],
+    "expected_excluded_tickers": ["JNJ", "TMO"],
+    "notes": ""
+  },
+  {
+    "query": "Companies operating oil and gas pipelines or midstream energy infrastructure",
+    "expected_relevant_tickers": ["KMI", "WMB"],
+    "expected_excluded_tickers": ["EOG", "NEE"],
+    "notes": "Midstream, not upstream producers or utilities."
+  },
+  {
+    "query": "Electric utilities serving regulated retail customers",
+    "expected_relevant_tickers": ["DUK", "SO", "D", "ED", "NEE"],
+    "expected_excluded_tickers": ["XOM", "SLB"],
+    "notes": ""
+  },
+  {
+    "query": "Payment networks and transaction processing companies",
+    "expected_relevant_tickers": ["V", "MA", "FIS"],
+    "expected_excluded_tickers": ["GS", "MET"],
+    "notes": ""
+  },
+  {
+    "query": "Investment banks and brokerage firms",
+    "expected_relevant_tickers": ["GS", "MS", "SCHW"],
+    "expected_excluded_tickers": ["V", "SPGI"],
+    "notes": ""
+  },
+  {
+    "query": "Companies whose customers are cloud providers or hyperscalers",
+    "expected_relevant_tickers": ["ANET", "DLR", "VRT"],
+    "expected_excluded_tickers": ["MCD", "KO"],
+    "notes": "Customer-exposure oriented query."
+  },
+  {
+    "query": "Quick service and fast casual restaurant chains",
+    "expected_relevant_tickers": ["MCD", "CMG", "YUM"],
+    "expected_excluded_tickers": ["SYY", "KR"],
+    "notes": "Restaurants, not food distributors or grocers."
+  },
+  {
+    "query": "Home improvement retailers",
+    "expected_relevant_tickers": ["HD", "LOW"],
+    "expected_excluded_tickers": ["TGT", "TJX"],
+    "notes": ""
+  },
+  {
+    "query": "Automakers producing cars and trucks",
+    "expected_relevant_tickers": ["F", "GM"],
+    "expected_excluded_tickers": ["CMI", "CAT"],
+    "notes": "Engine suppliers excluded."
+  },
+  {
+    "query": "Companies exposed to gold prices through mining operations",
+    "expected_relevant_tickers": ["NEM"],
+    "expected_excluded_tickers": ["NUE", "SHW"],
+    "notes": "NEM only; note NEM may not be in the final universe - treat as robustness case."
+  },
+  {
+    "query": "Aerospace companies making jet engines or aircraft components",
+    "expected_relevant_tickers": ["GE", "RTX", "HWM"],
+    "expected_excluded_tickers": ["LMT", "UNP"],
+    "notes": "HWM/GE component focus; LMT is systems-level."
+  },
+  {
+    "query": "Waste collection and environmental services companies",
+    "expected_relevant_tickers": ["WM"],
+    "expected_excluded_tickers": ["PWR", "URI"],
+    "notes": ""
+  },
+  {
+    "query": "Companies that build or service electric grid and power infrastructure",
+    "expected_relevant_tickers": ["PWR", "ETN", "EMR"],
+    "expected_excluded_tickers": ["KO", "TJX"],
+    "notes": ""
+  },
+  {
+    "query": "Hospital operators and healthcare facilities",
+    "expected_relevant_tickers": ["HCA"],
+    "expected_excluded_tickers": ["UNH", "LLY"],
+    "notes": ""
+  },
+  {
+    "query": "Tobacco and smoke-free nicotine product companies",
+    "expected_relevant_tickers": ["PM", "MO"],
+    "expected_excluded_tickers": ["KO", "PG"],
+    "notes": ""
+  },
+  {
+    "query": "Credit ratings, indices, and financial data providers",
+    "expected_relevant_tickers": ["SPGI", "MCO"],
+    "expected_excluded_tickers": ["ICE", "BLK"],
+    "notes": "MCO may not be in the final universe; ICE is exchanges."
+  },
+  {
+    "query": "Companies with large exposure to e-commerce logistics and parcel delivery",
+    "expected_relevant_tickers": ["UPS", "FDX"],
+    "expected_excluded_tickers": ["UNP", "DAL"],
+    "notes": ""
+  },
+  {
+    "query": "Beverage companies selling soft drinks globally",
+    "expected_relevant_tickers": ["KO"],
+    "expected_excluded_tickers": ["PG", "CL"],
+    "notes": ""
+  }
+]

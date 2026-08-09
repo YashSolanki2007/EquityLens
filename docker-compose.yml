@@ -1,0 +1,50 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: equity_research_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: equity_research
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d equity_research"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/equity_research
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  web:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

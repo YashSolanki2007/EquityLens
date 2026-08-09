@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+  body { font-family: -apple-system, Helvetica, sans-serif; font-size: 11px; line-height: 1.5; color: #1a1a1a; margin: 36px 44px; }
+  h1 { font-size: 20px; border-bottom: 2px solid #0f766e; padding-bottom: 6px; }
+  h2 { font-size: 15px; color: #0f766e; margin-top: 22px; }
+  h3 { font-size: 12px; margin-top: 14px; }
+  code, pre { font-family: Menlo, monospace; font-size: 9.5px; background: #f4f4f4; border-radius: 3px; }
+  code { padding: 1px 4px; }
+  pre { padding: 10px; line-height: 1.45; overflow-x: hidden; }
+  table { border-collapse: collapse; width: 100%; font-size: 10.5px; }
+  td, th { border: 1px solid #ddd; padding: 4px 8px; text-align: left; vertical-align: top; }
+  th { background: #f0fdfa; }
+  .muted { color: #666; }
+  .step { margin: 6px 0; }
+  .step b { color: #0f766e; }
+</style></head><body>
+
+<h1>Equity Research Prototype — Project Guide</h1>
+<p class="muted">Local-first semantic equity research over 100 NYSE companies. FastAPI + Postgres/pgvector + Next.js, all models local via Ollama. Retrieval &amp; cited research only — no investment advice.</p>
+
+<h2>1. Directory structure — what lives where</h2>
+<pre>
+easy-invest/
+├─ SPEC.md                     The build specification this repo implements
+├─ README.md                   Setup &amp; run instructions
+├─ docker-compose.yml          Postgres + pgvector (db), optional api/web containers
+├─ .env.example                All config: DB URL, Ollama models, SEC user-agent
+├─ data/
+│  ├─ companies.csv            The FIXED universe: 100 reviewed NYSE companies (ticker,name,cik,…)
+│  ├─ eval_queries.json        25 labeled queries for retrieval evaluation
+│  ├─ filings/  (gitignored)   Downloaded SEC filing HTML, cached forever by accession no.
+│  └─ cache/    (gitignored)   Cached SEC JSON, market snapshots, query plans
+├─ scripts/
+│  ├─ build_universe.py        Regenerates companies.csv, validated against SEC data
+│  ├─ bootstrap_db.py          Runs migrations + loads the universe into Postgres
+│  ├─ ingest_universe.py       Pulls filings metadata, 10-Ks, XBRL facts, market caps
+│  ├─ rebuild_cards.py         Builds the semantic card index (the long LLM job)
+│  ├─ card_progress.py         Live progress bar for the card build
+│  └─ evaluate_search.py       Recall/precision/latency report over eval_queries.json
+├─ services/api/               ── PYTHON BACKEND ──
+│  ├─ alembic/                 DB migrations (13 tables, vector indexes)
+│  ├─ tests/                   63 unit + integration tests
+│  └─ app/
+│     ├─ main.py               FastAPI entrypoint
+│     ├─ core/                 config.py, db.py, llm.py (Ollama provider), cache.py, logging.py
+│     ├─ models/tables.py      All SQLAlchemy tables (companies, cards, filings, sessions…)
+│     ├─ schemas/              Pydantic: SearchPlan, conditions, results, API bodies
+│     ├─ prompts/              Every LLM prompt: cards, planner, catalyst, chat
+│     ├─ api/                  Routers: search.py, companies.py, admin.py
+│     ├─ workers/              candidate_worker.py — bounded per-company research
+│     └─ services/
+│        ├─ sec/               EDGAR client (rate-limited), HTML parser, XBRL extraction
+│        ├─ market_data/       yfinance snapshots (12h cache, labeled delayed)
+│        ├─ semantic_search/   cards.py (generation), retrieval.py, indexer.py
+│        ├─ query_planner/     NL query → structured SearchPlan
+│        ├─ research/          financials.py (deterministic YoY), catalysts.py
+│        ├─ ranking/           filters.py (market cap etc.), scoring.py (final rank)
+│        ├─ chat/              Follow-up: intent router, grounded answers, plan editor
+│        ├─ search_service.py  The orchestrator tying all stages together (SSE progress)
+│        └─ ingestion.py       Universe/company ingestion pipeline
+└─ apps/web/                   ── NEXT.JS FRONTEND ──
+   ├─ app/                     Pages: / (search), search/[id], company/[ticker], admin
+   ├─ components/              search-view, result-card, funnel, chat-panel, plan-chips…
+   └─ lib/api.ts               Typed (Zod) API client + SSE stream helper
+</pre>
+
+<h2>2. How the semantic search works</h2>
+
+<h3>The core idea: “company cards”</h3>
+<p>You can’t embed a 300-page 10-K as one vector and expect good search. Instead, each company is distilled <b>offline</b> into ~25 small, verified facts called <b>cards</b> — e.g. <i>“Operates interconnected data centers providing colocation and connectivity to enterprises and cloud providers.”</i> Each card has a type (business_activity, product_service, customer_exposure, geographic_exposure, supply_chain_role, macro_exposure), a directness label (core / direct / indirect / prospective), and the exact 10-K excerpt it came from.</p>
+
+<h3>Offline: building the index (scripts/rebuild_cards.py)</h3>
+<div class="step"><b>1. Parse.</b> The company’s latest 10-K HTML is stripped and split into sections (Item 1 Business, Item 2 Properties, Item 7 MD&amp;A), then chunked into ~1800-char excerpts.</div>
+<div class="step"><b>2. Extract.</b> Each excerpt goes to the local LLM (qwen3:8b) with strict rules: one atomic fact per card, 20–50 words, no opinions, no inference beyond the text.</div>
+<div class="step"><b>3. Verify.</b> A <i>second</i> LLM pass judges every candidate card against its source excerpt: entailed / partially / not entailed. Only <b>entailed cards with confidence ≥ 0.75</b> survive — this is what keeps the index trustworthy.</div>
+<div class="step"><b>4. Embed.</b> Surviving card texts become 1024-dim vectors (qwen3-embedding:0.6b) stored in Postgres with <b>pgvector</b>, alongside the source excerpt and filing URL for citations.</div>
+
+<h3>Online: answering a query</h3>
+<div class="step"><b>1. Plan.</b> The LLM converts your sentence into a structured <code>SearchPlan</code>: semantic conditions (concepts to match, which card types, required directness), structured filters (sector, market-cap “around $3B ±40%”), and research conditions (revenue YoY ≥ X, recent catalyst). Shown as editable chips in the UI.</div>
+<div class="step"><b>2. Retrieve.</b> Each semantic condition is embedded and pgvector finds the top-100 nearest cards by cosine similarity, filtered by card type/directness. Cards group by company (best 3 kept). A company must clear a similarity floor (0.55) and have evidence for <i>every required</i> condition. Score = <code>0.70·similarity + 0.20·directness + 0.10·confidence</code>.</div>
+<div class="step"><b>3. Filter.</b> Deterministic structured filters (ticker/sector/market cap) cut the list to ≤15 candidates. Missing market data ⇒ “not verified”, never a silent fail.</div>
+<div class="step"><b>4. Research.</b> One bounded worker per candidate runs in parallel (25s deadline, ≤4 downloads, ≤3 LLM calls). Revenue/net-income YoY is computed <b>in Python from SEC XBRL facts — never by the LLM</b> (same fiscal quarter one year apart, restatements preferred). Catalyst questions retrieve relevant chunks from recent 8-K/10-Q/10-K and the LLM only classifies the evidence, returning citations.</div>
+<div class="step"><b>5. Rank.</b> Pure arithmetic: <code>final = Σ(weight·score) × (0.70 + 0.30·confidence)</code>. Ranking = query fit only. Results ship with citations, limitations, and the funnel (100 → semantic → filtered → researched → qualified).</div>
+
+<h3>Why it’s designed this way</h3>
+<table>
+<tr><th>Choice</th><th>Reason</th></tr>
+<tr><td>Two-pass card generation (extract → verify)</td><td>Local 8B models hallucinate; the entailment check filters that out before anything is indexed.</td></tr>
+<tr><td>Cards, not document chunks, for search</td><td>Atomic facts embed cleanly, match concepts (“data-center exposure”) instead of keywords, and each hit is instantly citable.</td></tr>
+<tr><td>LLM never does math or ranking</td><td>Growth %, filters, and scores are deterministic Python — reproducible and auditable.</td></tr>
+<tr><td>Everything carries a source excerpt + URL</td><td>Every claim in the UI traces back to a specific SEC filing passage.</td></tr>
+</table>
+
+</body></html>

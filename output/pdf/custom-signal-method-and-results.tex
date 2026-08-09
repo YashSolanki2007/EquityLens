@@ -1,0 +1,372 @@
+
+\documentclass[11pt,a4paper]{article}
+\usepackage[a4paper,margin=19mm,headsep=8mm,footskip=12mm]{geometry}
+\usepackage{fontspec}
+\usepackage{unicode-math}
+\setmainfont{Georgia}[
+  BoldFont={Georgia Bold},
+  ItalicFont={Georgia Italic},
+  BoldItalicFont={Georgia Bold Italic}
+]
+\setsansfont{Arial}
+\setmonofont{Menlo}
+\setmathfont{STIX Two Math}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\hypersetup{colorlinks=true,linkcolor=DeepBlue,urlcolor=SignalGreen,pdftitle={EquityLens Custom Momentum Probability Signal}}
+\definecolor{Ink}{HTML}{132238}
+\definecolor{Muted}{HTML}{59697D}
+\definecolor{SignalGreen}{HTML}{0F8B6D}
+\definecolor{DeepBlue}{HTML}{3267B2}
+\definecolor{Soft}{HTML}{F1F6F8}
+\definecolor{Rule}{HTML}{D7E1E7}
+\color{Ink}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em}
+\setlength{\emergencystretch}{2em}
+\setlength{\tabcolsep}{4.5pt}
+\renewcommand{\arraystretch}{1.18}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\sectionrule}{\vspace{-0.5em}\par\noindent\color{SignalGreen}\rule{\linewidth}{0.7pt}\color{Ink}\par\vspace{0.3em}}
+\newcommand{\metricbox}[3]{\fcolorbox{Rule}{Soft}{\parbox[c][18mm][c]{0.27\textwidth}{\sffamily\scriptsize\color{Muted}#1\\[2pt]\normalfont\Large\color{Ink}#2\\[-1pt]\scriptsize\color{Muted}#3}}}
+\newcommand{\note}[1]{\begin{center}\fcolorbox{SignalGreen}{Soft}{\parbox{0.91\linewidth}{#1}}\end{center}}
+\newcommand{\code}[1]{\texttt{#1}}
+\pagestyle{plain}
+\begin{document}
+
+\begin{titlepage}
+\vspace*{18mm}
+{\sffamily\small\color{SignalGreen}\bfseries EQUITYLENS RESEARCH NOTE}\par
+\vspace{7mm}
+{\sffamily\fontsize{30}{35}\selectfont\bfseries Custom Momentum\\Probability Signal}\par
+\vspace{5mm}
+{\Large A walk-forward annualized-beta and transformed-return model for India's stock market}\par
+\vspace{10mm}
+\sectionrule
+\vspace{7mm}
+\metricbox{TEST WINDOW}{2012--2026}{NIFTY 50 price index}\hfill
+\metricbox{STRATEGY CAGR}{7.76\%}{NIFTY 50: 11.48\%}\hfill
+\metricbox{CURRENT POSITION}{LONG}{Score 7.62\%; cutoff 0.85\%}
+\par\vspace{10mm}
+\begin{minipage}{0.92\linewidth}
+\textbf{Research conclusion.} The restored 63-session specification compounds the daily log-price slope over 252 sessions, multiplies it by the locally adjusted tail probability, and compares that score with the expanding median daily EWMA volatility. It produces a 7.76\% CAGR, 0.764 Sharpe ratio, and -19.39\% maximum drawdown over the completed sample. The benchmark compounds faster at 11.48\%, so the result is defensive rather than evidence of market-beating alpha.
+\end{minipage}
+\vfill
+{\small Generated from the point-in-time EquityLens dataset through 2026-08-07. Research use only; not investment advice.}
+\end{titlepage}
+
+\tableofcontents
+\clearpage
+
+\section{Objective and complete signal definition}
+\sectionrule
+The model asks whether a recent log-price trend, combined with a continuous estimate of return plausibility, can support a daily long-or-cash decision. The estimation window is 63 sessions, while the forecast horizon remains one session.
+
+For adjusted close $P_t$, define log price $y_i=\log P_i$ and time index $x_i=i$ over the latest $L=63$ observations. The ordinary least-squares slope is
+\begin{equation}
+\widehat{\beta}_{d,t}
+=
+\frac{\sum_{i=1}^{L}(x_i-\bar{x})(y_i-\bar{y})}
+     {\sum_{i=1}^{L}(x_i-\bar{x})^2}.
+\label{eq:daily-beta}
+\end{equation}
+This is a daily continuously compounded trend estimate. The one-session simple-return hurdle inserted into the probability distribution is
+\begin{equation}
+m_t=\exp\!\left(\widehat{\beta}_{d,t}\right)-1.
+\label{eq:daily-forecast}
+\end{equation}
+The restored score uses the annualized slope
+\begin{equation}
+\widehat{\beta}_{a,t}
+=\exp\!\left(252\widehat{\beta}_{d,t}\right)-1.
+\label{eq:annual-beta}
+\end{equation}
+
+\note{The annualization in Equation~\ref{eq:annual-beta} changes the magnitude of the score; it does not change the one-day forecast horizon in Equation~\ref{eq:daily-forecast}.}
+
+\section{Conditional return distribution}
+\sectionrule
+Let the one-day log return be $r_t=\log(P_t/P_{t-1})$. A 21-session exponentially weighted standard deviation estimates conditional daily volatility:
+\begin{align}
+\alpha &= \frac{2}{21+1},\\
+\widehat{\sigma}^{2}_t
+&=(1-\alpha)\widehat{\sigma}^{2}_{t-1}
+  +\alpha\left(r_t-\widehat{\mu}_t\right)^2.
+\end{align}
+Each historical shock is standardized by the volatility forecast known before it occurred,
+\begin{equation}
+z_t=\frac{r_t}{\widehat{\sigma}_{t-1}}.
+\end{equation}
+Using at most 756 completed observations, the model applies the Yeo--Johnson transform
+\begin{equation}
+T_{\lambda}(z)=
+\begin{cases}
+\dfrac{(z+1)^{\lambda}-1}{\lambda}, & z\ge 0,\ \lambda\ne0,\\[6pt]
+\log(z+1), & z\ge0,\ \lambda=0,\\[6pt]
+-\dfrac{(1-z)^{2-\lambda}-1}{2-\lambda}, & z<0,\ \lambda\ne2,\\[6pt]
+-\log(1-z), & z<0,\ \lambda=2.
+\end{cases}
+\label{eq:yeojohnson}
+\end{equation}
+The transformation parameter is refitted every 21 sessions. If $\mu_T$ and $s_T$ denote the transformed rolling mean and standard deviation, define
+\begin{equation}
+a_t=T_{\lambda}\!\left(\frac{m_t}{\widehat{\sigma}_t}\right),
+\qquad
+u_t=\frac{a_t-\mu_T}{s_T}.
+\end{equation}
+The signed-tail probability is
+\begin{equation}
+q^{\mathrm{raw}}_t=
+\begin{cases}
+1-\Phi(u_t), & m_t\ge0,\\
+\Phi(u_t), & m_t<0,
+\end{cases}
+\label{eq:tail}
+\end{equation}
+where $\Phi$ is the standard normal cumulative distribution function.
+
+\section{Non-IID adjustment and trading score}
+\sectionrule
+The raw probability defines an expected waiting window
+\begin{equation}
+N_t=\operatorname{clip}\!\left(\left\lceil\frac{1}{q^{\mathrm{raw}}_t}\right\rceil,2,63\right).
+\end{equation}
+Let $h_t$ be the number of completed forecast hits within that window and $n_t$ the number of completed observations. With prior strength $\kappa=20$,
+\begin{equation}
+q^{\mathrm{adj}}_t
+=\frac{\kappa q^{\mathrm{raw}}_t+h_t}{\kappa+n_t}.
+\label{eq:beta-binomial}
+\end{equation}
+The restored score is
+\begin{equation}
+S_t=\widehat{\beta}_{a,t}\,q^{\mathrm{adj}}_t.
+\label{eq:score}
+\end{equation}
+For asset $j$, the point-in-time cutoff is the expanding median of completed daily volatility estimates:
+\begin{equation}
+\theta_{j,t}=\operatorname{median}\left\{\widehat{\sigma}_{j,s}:s<t\right\}.
+\label{eq:threshold}
+\end{equation}
+After at least 126 completed volatility observations, the target exposure is
+\begin{equation}
+w_t^{\star}=\mathbf{1}\!\left\{S_t>\theta_{j,t}\right\}.
+\end{equation}
+The signal formed after close $t$ is acted on at close $t+1$; the first attributed return is from $t+1$ to $t+2$. A 10-basis-point one-way cost is charged whenever target exposure changes.
+
+\note{Equations~\ref{eq:score} and~\ref{eq:threshold} compare an annualized-return score with a daily-volatility cutoff. This recreates the original profitable-looking specification exactly, but it is a dimensional inconsistency and must be treated as a research limitation rather than an economic identity.}
+
+\section{Walk-forward evaluation protocol}
+\sectionrule
+At every date, the regression, volatility estimate, transformed PDF, beta-binomial hit history, and cutoff contain only information available at that close. The PDF requires 504 training rows and is refitted every 21 sessions. The primary benchmark is the NIFTY 50 price index, cash earns zero, and dividends are excluded.
+
+\begin{table}[h]
+\centering
+\caption{Primary NIFTY 50 results, 2012-04-23 to 2026-08-07.}
+\begin{tabular}{lrr}
+\toprule
+Metric & Custom signal & NIFTY 50 \\
+\midrule
+CAGR & 7.76\% & 11.48\% \\
+Sharpe ratio, 0\% cash rate & 0.764 & 0.776 \\
+Sortino ratio, 0\% MAR & 1.096 & 1.085 \\
+Maximum drawdown & -19.39\% & -38.44\% \\
+Total return & 191.12\% & 372.46\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The strategy is invested 65.90\% of the time, makes 24 entries, and has market beta 0.453. Its Sharpe ratio is close to but below the benchmark, its Sortino ratio is slightly higher, and its drawdown is materially smaller. Its CAGR remains below buy-and-hold because substantial positive market returns occur while the strategy is in cash.
+
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{/Users/yashsolanki/Desktop/easy-invest/tmp/pdfs/custom-signal-report/equity-drawdown.png}}
+\caption{Growth of one unit and drawdown for the restored annualized specification.}
+\end{figure}
+
+\clearpage
+\section{Volatility, score, and current state}
+\sectionrule
+Current daily beta is 0.066\%, corresponding to an annualized beta of 18.08\%. The raw and adjusted probabilities are 48.49\% and 42.16\%, producing a score of 7.62\% against a cutoff of 0.85\%. The resulting position is \textbf{LONG}.
+
+Current daily EWMA volatility is 0.70\%, the expanding-sample median is 0.81\%, and the 90th percentile is 1.28\%.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{/Users/yashsolanki/Desktop/easy-invest/tmp/pdfs/custom-signal-report/sd-threshold.png}}
+\caption{Daily conditional volatility and the restored annualized-beta probability score. The dashed amber line is the expanding median daily-SD cutoff.}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Sensitivity to the daily-volatility percentile used as the cutoff.}
+\begin{tabular}{rrrrrrr}
+\toprule
+SD percentile & Cutoff & CAGR & Sharpe & Sortino & Max DD & Invested \\
+\midrule
+25\% & 0.67\% & 7.79\% & 0.765 & 1.099 & -18.82\% & 66.30\% \\
+40\% & 0.77\% & 7.88\% & 0.774 & 1.111 & -18.82\% & 66.04\% \\
+50\% & 0.85\% & 7.76\% & 0.764 & 1.096 & -19.39\% & 65.90\% \\
+60\% & 0.93\% & 7.78\% & 0.767 & 1.100 & -18.32\% & 65.78\% \\
+75\% & 1.09\% & 7.68\% & 0.760 & 1.091 & -19.49\% & 65.44\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The 50th percentile is the live rule. Nearby cutoffs produce similar outcomes, which is more reassuring than a single isolated optimum, but the comparison is still in-sample and does not constitute hyperparameter validation.
+
+\clearpage
+\section{Calendar-year behaviour}
+\sectionrule
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{/Users/yashsolanki/Desktop/easy-invest/tmp/pdfs/custom-signal-report/yearly-returns.png}}
+\caption{Calendar-year returns for the restored signal and NIFTY 50.}
+\end{figure}
+
+\begin{center}
+\small
+\begin{longtable}{rrrrr}
+\toprule
+Year & Signal & Index & Invested & Switches \\
+\midrule
+\endhead
+2012 & 12.7\% & 13.5\% & 66\% & 1 \\
+2013 & -5.5\% & 6.8\% & 54\% & 4 \\
+2014 & 22.7\% & 31.4\% & 92\% & 2 \\
+2015 & -11.6\% & -4.1\% & 47\% & 5 \\
+2016 & 11.6\% & 3.0\% & 57\% & 2 \\
+2017 & 20.0\% & 28.6\% & 91\% & 3 \\
+2018 & -3.7\% & 3.2\% & 64\% & 4 \\
+2019 & 7.9\% & 12.0\% & 77\% & 2 \\
+2020 & 35.0\% & 14.9\% & 72\% & 2 \\
+2021 & 12.7\% & 24.1\% & 83\% & 3 \\
+2022 & -8.6\% & 4.3\% & 46\% & 7 \\
+2023 & 7.8\% & 20.0\% & 60\% & 4 \\
+2024 & 11.3\% & 8.8\% & 85\% & 1 \\
+2025 & 4.7\% & 10.5\% & 52\% & 3 \\
+2026 & 3.6\% & -6.0\% & 29\% & 4 \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+The long-or-cash construction tends to reduce losses in persistent declines but can remain long during the first leg of a reversal and then miss the recovery after moving to cash. The result is path-dependent and particularly sensitive to abrupt trend changes.
+
+\clearpage
+\section{Probability diagnostics}
+\sectionrule
+The report evaluates 3,508 completed one-day forecasts. Brier scores are 0.2464 for the transformed-PDF probability, 0.2461 after the beta-binomial update, and 0.2486 for the rolling base probability.
+
+These diagnostics measure event calibration, not trading profitability. A probability model can be well calibrated while the event itself has little economic value, and multiplying a weak trend by a calibrated probability does not manufacture predictive alpha.
+
+The event is defined relative to the signed contemporaneous forecast:
+\begin{equation}
+H_{t+1}=\begin{cases}
+1, & R_{t+1}\ge m_t,\quad m_t\ge0,\\
+1, & R_{t+1}\le m_t,\quad m_t<0,\\
+0, & \text{otherwise.}
+\end{cases}
+\end{equation}
+This is not a fixed $\pm1\%$ event. When $m_t$ lies near the centre of the fitted distribution, the raw tail probability can naturally remain close to one half.
+
+\section{Cross-market evidence}
+\sectionrule
+The same architecture is applied without asset-specific performance tuning. Each instrument receives its own point-in-time median daily-SD cutoff.
+
+\begin{table}[h]
+\centering
+\begin{tabularx}{\textwidth}{Yrrrr}
+\toprule
+Sample & Sharpe wins & Drawdown wins & Count & Median CAGR gap \\
+\midrule
+Indian indices & 1/6 & 6/6 & 6 & -6.25\% \\
+Indian large caps & 0/10 & 8/10 & 10 & -9.39\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{\detokenize{/Users/yashsolanki/Desktop/easy-invest/tmp/pdfs/custom-signal-report/cross-market.png}}
+\caption{CAGR gap and maximum-drawdown improvement versus same-asset buy-and-hold.}
+\end{figure}
+
+The model wins on Sharpe in only 1/6 indices and 0/10 large-cap stocks, while drawdown improves in 6/6 and 8/10, respectively. The cross-sectional evidence therefore supports a possible defensive overlay more than a general alpha claim.
+
+\clearpage
+\section{Asset-level scorecard}
+\sectionrule
+\scriptsize
+\begin{longtable}{p{33mm}rrrrrr}
+\toprule
+Asset & Cutoff & CAGR & B\&H CAGR & Sharpe & B\&H Sharpe & Max DD \\
+\midrule
+\endhead
+S\&P BSE Sensex & 0.84\% & 7.74\% & 11.13\% & 0.770 & 0.755 & -16.33\% \\
+NIFTY 100 & 0.86\% & 7.26\% & 11.90\% & 0.713 & 0.801 & -19.95\% \\
+NIFTY Midcap 50 & 1.17\% & 5.65\% & 15.58\% & 0.435 & 0.808 & -47.74\% \\
+NIFTY Bank & 1.13\% & 5.24\% & 12.70\% & 0.423 & 0.662 & -28.48\% \\
+NIFTY IT & 1.16\% & 5.96\% & 12.63\% & 0.466 & 0.683 & -31.76\% \\
+NIFTY Pharma & 1.01\% & 5.08\% & 10.90\% & 0.432 & 0.652 & -44.41\% \\
+HDFC Bank & 1.17\% & 5.19\% & 13.73\% & 0.411 & 0.694 & -35.21\% \\
+ICICI Bank & 1.67\% & 8.08\% & 17.88\% & 0.477 & 0.707 & -32.37\% \\
+Reliance Industries & 1.47\% & 4.86\% & 16.30\% & 0.353 & 0.714 & -45.19\% \\
+Bharti Airtel & 1.71\% & 6.14\% & 15.12\% & 0.388 & 0.635 & -40.51\% \\
+Larsen \& Toubro & 1.52\% & 3.87\% & 16.30\% & 0.298 & 0.696 & -42.15\% \\
+Infosys & 1.45\% & 1.79\% & 13.05\% & 0.193 & 0.596 & -46.77\% \\
+State Bank of India & 1.76\% & 2.68\% & 13.11\% & 0.232 & 0.550 & -41.53\% \\
+Axis Bank & 1.71\% & 6.02\% & 12.75\% & 0.380 & 0.538 & -38.46\% \\
+Kotak Mahindra Bank & 1.48\% & 5.33\% & 14.30\% & 0.379 & 0.650 & -44.65\% \\
+ITC & 1.31\% & 4.22\% & 7.80\% & 0.326 & 0.438 & -46.73\% \\
+\bottomrule
+\end{longtable}
+\normalsize
+
+The large-cap universe uses current constituents and therefore contains survivorship bias. Different histories also create different evaluation windows. The table should not be interpreted as a historical-constituent portfolio simulation.
+
+\section{Limitations}
+\sectionrule
+\begin{enumerate}
+\item \textbf{Dimensional mismatch.} The annualized score in Equation~\ref{eq:score} is compared with a daily-volatility cutoff in Equation~\ref{eq:threshold}. The restored rule is empirically defined rather than dimensionally derived.
+\item \textbf{Annualization amplifies estimation error.} Small changes in $\widehat{\beta}_{d,t}$ are magnified by the nonlinear map
+\[
+g(\widehat{\beta}_{d,t})=\exp(252\widehat{\beta}_{d,t})-1.
+\]
+\item \textbf{Weak one-day predictability.} A fitted price trend is descriptive and is not automatically the conditional expectation of tomorrow's return.
+\item \textbf{Distribution risk.} Yeo--Johnson can improve symmetry, but a transformed Gaussian can still understate tails, skew, volatility clustering, and regime changes.
+\item \textbf{Partial non-IID treatment.} The beta-binomial window reacts to recent hit counts but does not model return autocorrelation, latent regimes, or tail dependence directly.
+\item \textbf{Selection risk.} The lookback, refit cadence, prior strength, volatility cutoff, and trading cost were examined on the same broad historical record.
+\item \textbf{Implementation omissions.} The primary series excludes dividends; cash earns zero; taxes, variable spreads, market impact, and capacity limits are absent.
+\item \textbf{Binary exposure.} An all-or-nothing target discards information about signal strength and can create threshold whipsaw.
+\end{enumerate}
+
+\section{Recommended research programme}
+\sectionrule
+\begin{enumerate}
+\item Select every parameter inside nested walk-forward training windows and score untouched forward periods.
+\item Test entry and exit hysteresis jointly, rather than using the same threshold for both decisions.
+\item Compare the annualized formulation with dimensionally consistent alternatives on exactly the same dates.
+\item Calibrate probabilities out of sample with isotonic or logistic methods and retain the beta-binomial layer only if it improves proper scoring rules.
+\item Compare skew-$t$, filtered historical simulation, GARCH-family volatility, and extreme-value tails.
+\item Test continuous position sizing and portfolio-volatility targeting.
+\item Use total-return indices or investable futures/ETF proxies, historical constituents, variable costs, and non-zero cash yield.
+\item Add block-bootstrap confidence intervals, turnover-adjusted tests, deflated Sharpe, and probability-of-backtest-overfitting diagnostics.
+\end{enumerate}
+
+\section{Conclusion}
+\sectionrule
+The restored annualized specification reproduces the earlier result: 7.76\% CAGR, 0.764 Sharpe, 1.096 Sortino, and -19.39\% maximum drawdown. It substantially outperforms the later 15-session variants and reduces drawdown relative to buy-and-hold. It still trails the NIFTY 50 CAGR of 11.48\% and does not generalize as an alpha model across the frozen Indian-market sample. Its strongest current interpretation is a defensive trend overlay whose annualization and threshold construction require stricter out-of-sample validation.
+
+\begin{thebibliography}{9}
+\bibitem{yeojohnson}
+I. K. Yeo and R. A. Johnson, ``A New Family of Power Transformations to Improve Normality or Symmetry,'' \emph{Biometrika}, vol. 87, no. 4, 2000. \url{https://doi.org/10.1080/713665670}
+\bibitem{data}
+Yahoo Finance delayed and auto-adjusted histories as identified in the generated EquityLens dataset. Primary series: NIFTY 50 price index (\code{\^{}NSEI}).
+\end{thebibliography}
+
+\end{document}

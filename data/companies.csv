@@ -1,0 +1,101 @@
+ticker,name,cik,exchange,sector,industry
+JPM,JPMORGAN CHASE & CO,0000019617,NYSE,Financials,Diversified Banks
+BAC,BANK OF AMERICA CORP /DE/,0000070858,NYSE,Financials,Diversified Banks
+WFC,WELLS FARGO & COMPANY/MN,0000072971,NYSE,Financials,Diversified Banks
+C,CITIGROUP INC,0000831001,NYSE,Financials,Diversified Banks
+GS,GOLDMAN SACHS GROUP INC,0000886982,NYSE,Financials,Investment Banking & Brokerage
+MS,MORGAN STANLEY,0000895421,NYSE,Financials,Investment Banking & Brokerage
+SCHW,SCHWAB CHARLES CORP,0000316709,NYSE,Financials,Investment Banking & Brokerage
+BLK,"BlackRock, Inc.",0002012383,NYSE,Financials,Asset Management
+AXP,AMERICAN EXPRESS CO,0000004962,NYSE,Financials,Consumer Finance
+V,VISA INC.,0001403161,NYSE,Financials,Payments & Transaction Processing
+MA,Mastercard Inc,0001141391,NYSE,Financials,Payments & Transaction Processing
+SPGI,S&P Global Inc.,0000064040,NYSE,Financials,Financial Data & Ratings
+ICE,"Intercontinental Exchange, Inc.",0001571949,NYSE,Financials,Securities Exchanges
+CB,Chubb Ltd,0000896159,NYSE,Financials,Property & Casualty Insurance
+ORCL,ORACLE CORP,0001341439,NYSE,Information Technology,Enterprise Software & Cloud Infrastructure
+CRM,"Salesforce, Inc.",0001108524,NYSE,Information Technology,Application Software
+IBM,INTERNATIONAL BUSINESS MACHINES CORP,0000051143,NYSE,Information Technology,IT Services & Hybrid Cloud
+ACN,Accenture plc,0001467373,NYSE,Information Technology,IT Consulting & Services
+NOW,"ServiceNow, Inc.",0001373715,NYSE,Information Technology,Application Software
+ANET,"Arista Networks, Inc.",0001596532,NYSE,Information Technology,Data Center Networking Equipment
+DELL,Dell Technologies Inc.,0001571996,NYSE,Information Technology,Servers & IT Hardware
+HPE,Hewlett Packard Enterprise Co,0001645590,NYSE,Information Technology,Servers & IT Hardware
+VRT,Vertiv Holdings Co,0001674101,NYSE,Information Technology,Data Center Power & Cooling Equipment
+MSI,"Motorola Solutions, Inc.",0000068505,NYSE,Information Technology,Communications Equipment
+GLW,CORNING INC /NY,0000024741,NYSE,Information Technology,Optical Components & Specialty Glass
+APH,AMPHENOL CORP /DE/,0000820313,NYSE,Information Technology,Electronic Connectors & Interconnects
+TEL,TE Connectivity plc,0001385157,NYSE,Information Technology,Electronic Connectors & Sensors
+IT,GARTNER INC,0000749251,NYSE,Information Technology,Technology Research & Advisory
+FIS,"Fidelity National Information Services, Inc.",0001136893,NYSE,Financials,Payments & Financial Technology
+DLR,"DIGITAL REALTY TRUST, INC.",0001297996,NYSE,Real Estate,Data Center REIT
+AMT,AMERICAN TOWER CORP /MA/,0001053507,NYSE,Real Estate,Communications Tower REIT
+CCI,CROWN CASTLE INC.,0001051470,NYSE,Real Estate,Communications Tower REIT
+IRM,IRON MOUNTAIN INC,0001020569,NYSE,Real Estate,Records Management & Data Center REIT
+PLD,"Prologis, Inc.",0001045609,NYSE,Real Estate,Industrial Logistics REIT
+SPG,SIMON PROPERTY GROUP INC.,0001063761,NYSE,Real Estate,Retail REIT
+GE,GENERAL ELECTRIC CO,0000040545,NYSE,Industrials,Aerospace Engines & Systems
+CAT,CATERPILLAR INC,0000018230,NYSE,Industrials,Construction & Mining Machinery
+DE,DEERE & CO,0000315189,NYSE,Industrials,Agricultural Machinery
+MMM,3M CO,0000066740,NYSE,Industrials,Diversified Industrials
+ETN,Eaton Corp plc,0001551182,NYSE,Industrials,Electrical Power Management
+EMR,EMERSON ELECTRIC CO,0000032604,NYSE,Industrials,Industrial Automation
+PH,Parker-Hannifin Corp,0000076334,NYSE,Industrials,Motion & Control Technologies
+ROK,"ROCKWELL AUTOMATION, INC",0001024478,NYSE,Industrials,Industrial Automation Software & Hardware
+CMI,CUMMINS INC,0000026172,NYSE,Industrials,Engines & Power Generation
+PWR,"QUANTA SERVICES, INC.",0001050915,NYSE,Industrials,Infrastructure & Electric Power Construction
+URI,"UNITED RENTALS, INC.",0001067701,NYSE,Industrials,Equipment Rental
+JCI,Johnson Controls International plc,0000833444,NYSE,Industrials,Building Controls & HVAC
+TT,Trane Technologies plc,0001466258,NYSE,Industrials,HVAC & Climate Solutions
+OTIS,Otis Worldwide Corp,0001781335,NYSE,Industrials,Elevators & Escalators
+WM,WASTE MANAGEMENT INC,0000823768,NYSE,Industrials,Waste Management & Environmental Services
+UPS,UNITED PARCEL SERVICE INC,0001090727,NYSE,Industrials,Parcel Delivery & Logistics
+FDX,FEDEX CORP,0001048911,NYSE,Industrials,Parcel Delivery & Logistics
+UNP,UNION PACIFIC CORP,0000100885,NYSE,Industrials,Railroads
+BA,BOEING CO,0000012927,NYSE,Industrials,Commercial Aircraft & Defense
+RTX,RTX Corp,0000101829,NYSE,Industrials,Aerospace & Defense
+LMT,LOCKHEED MARTIN CORP,0000936468,NYSE,Industrials,Defense Systems
+NOC,NORTHROP GRUMMAN CORP /DE/,0001133421,NYSE,Industrials,Defense Systems
+GD,GENERAL DYNAMICS CORP,0000040533,NYSE,Industrials,Defense & Business Aviation
+UNH,UNITEDHEALTH GROUP INC,0000731766,NYSE,Health Care,Managed Health Care
+JNJ,JOHNSON & JOHNSON,0000200406,NYSE,Health Care,Pharmaceuticals & MedTech
+LLY,ELI LILLY & Co,0000059478,NYSE,Health Care,Pharmaceuticals
+PFE,PFIZER INC,0000078003,NYSE,Health Care,Pharmaceuticals
+MRK,"Merck & Co., Inc.",0000310158,NYSE,Health Care,Pharmaceuticals
+ABBV,AbbVie Inc.,0001551152,NYSE,Health Care,Biopharmaceuticals
+BMY,BRISTOL MYERS SQUIBB CO,0000014272,NYSE,Health Care,Pharmaceuticals
+TMO,THERMO FISHER SCIENTIFIC INC.,0000097745,NYSE,Health Care,Life Sciences Tools & Diagnostics
+ABT,ABBOTT LABORATORIES,0000001800,NYSE,Health Care,Medical Devices & Diagnostics
+DHR,DANAHER CORP /DE/,0000313616,NYSE,Health Care,Life Sciences & Bioprocessing
+CVS,CVS HEALTH Corp,0000064803,NYSE,Health Care,Pharmacy & Health Services
+HCA,"HCA Healthcare, Inc.",0000860730,NYSE,Health Care,Hospitals
+XOM,EXXON MOBIL CORP,0000034088,NYSE,Energy,Integrated Oil & Gas
+CVX,CHEVRON CORP,0000093410,NYSE,Energy,Integrated Oil & Gas
+COP,CONOCOPHILLIPS,0001163165,NYSE,Energy,Oil & Gas Exploration & Production
+EOG,EOG RESOURCES INC,0000821189,NYSE,Energy,Oil & Gas Exploration & Production
+SLB,SLB LIMITED/NV,0000087347,NYSE,Energy,Oilfield Services & Technology
+PSX,Phillips 66,0001534701,NYSE,Energy,Refining & Midstream
+MPC,Marathon Petroleum Corp,0001510295,NYSE,Energy,Refining & Marketing
+KMI,"KINDER MORGAN, INC.",0001506307,NYSE,Energy,Midstream Pipelines
+NEE,NEXTERA ENERGY INC,0000753308,NYSE,Utilities,Electric Utility & Renewables
+DUK,Duke Energy CORP,0001326160,NYSE,Utilities,Electric & Gas Utility
+SO,SOUTHERN CO,0000092122,NYSE,Utilities,Electric & Gas Utility
+D,"DOMINION ENERGY, INC",0000715957,NYSE,Utilities,Electric & Gas Utility
+SRE,SEMPRA,0001032208,NYSE,Utilities,Energy Infrastructure & Utility
+VST,Vistra Corp.,0001692819,NYSE,Utilities,Independent Power & Retail Electricity
+PG,PROCTER & GAMBLE Co,0000080424,NYSE,Consumer Staples,Household & Personal Products
+KO,COCA COLA CO,0000021344,NYSE,Consumer Staples,Beverages
+MCD,MCDONALDS CORP,0000063908,NYSE,Consumer Discretionary,Restaurants
+NKE,"NIKE, Inc.",0000320187,NYSE,Consumer Discretionary,Athletic Footwear & Apparel
+HD,"HOME DEPOT, INC.",0000354950,NYSE,Consumer Discretionary,Home Improvement Retail
+LOW,LOWES COMPANIES INC,0000060667,NYSE,Consumer Discretionary,Home Improvement Retail
+TJX,TJX COMPANIES INC /DE/,0000109198,NYSE,Consumer Discretionary,Off-Price Retail
+DIS,Walt Disney Co,0001744489,NYSE,Communication Services,Media & Entertainment
+F,FORD MOTOR CO,0000037996,NYSE,Consumer Discretionary,Automobiles
+GM,General Motors Co,0001467858,NYSE,Consumer Discretionary,Automobiles
+SHW,SHERWIN WILLIAMS CO,0000089800,NYSE,Materials,Paints & Coatings
+APD,"Air Products & Chemicals, Inc.",0000002969,NYSE,Materials,Industrial Gases
+FCX,FREEPORT-MCMORAN INC,0000831259,NYSE,Materials,Copper Mining
+NUE,NUCOR CORP,0000073309,NYSE,Materials,Steel Production
+VZ,VERIZON COMMUNICATIONS INC,0000732712,NYSE,Communication Services,Telecom Carriers
+T,AT&T INC.,0000732717,NYSE,Communication Services,Telecom Carriers

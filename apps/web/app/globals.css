@@ -1,0 +1,202 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.985 0.003 255);
+  --foreground: oklch(0.225 0.025 258);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.225 0.025 258);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.225 0.025 258);
+  --primary: oklch(0.515 0.19 257);
+  --primary-foreground: oklch(0.99 0.002 255);
+  --secondary: oklch(0.955 0.008 255);
+  --secondary-foreground: oklch(0.29 0.035 258);
+  --muted: oklch(0.962 0.006 255);
+  --muted-foreground: oklch(0.49 0.025 258);
+  --accent: oklch(0.947 0.025 253);
+  --accent-foreground: oklch(0.38 0.13 257);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.902 0.012 255);
+  --input: oklch(0.84 0.025 255);
+  --ring: oklch(0.585 0.16 257);
+  --chart-1: oklch(0.48 0.14 154);
+  --chart-2: oklch(0.55 0.12 222);
+  --chart-3: oklch(0.68 0.15 72);
+  --chart-4: oklch(0.57 0.14 315);
+  --chart-5: oklch(0.62 0.16 25);
+}
+
+.dark {
+  --background: oklch(0.135 0.003 285);
+  --foreground: oklch(0.94 0.004 90);
+  --card: oklch(0.175 0.004 285);
+  --card-foreground: oklch(0.94 0.004 90);
+  --popover: oklch(0.19 0.004 285);
+  --popover-foreground: oklch(0.94 0.004 90);
+  --primary: oklch(0.72 0.15 160);
+  --primary-foreground: oklch(0.13 0.02 160);
+  --secondary: oklch(0.225 0.005 285);
+  --secondary-foreground: oklch(0.92 0.004 90);
+  --muted: oklch(0.215 0.004 285);
+  --muted-foreground: oklch(0.69 0.006 90);
+  --accent: oklch(0.245 0.025 160);
+  --accent-foreground: oklch(0.83 0.1 160);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(0.285 0.005 285);
+  --input: oklch(0.38 0.006 285);
+  --ring: oklch(0.7 0.13 160);
+  --chart-1: oklch(0.67 0.14 154);
+  --chart-2: oklch(0.66 0.11 222);
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-image:
+      radial-gradient(circle at 76% -10%, color-mix(in oklab, var(--primary) 6%, transparent), transparent 34rem),
+      linear-gradient(to bottom, color-mix(in oklab, var(--card) 42%, transparent), transparent 260px);
+    font-feature-settings: "ss01", "cv02", "cv03";
+    letter-spacing: -0.003em;
+  }
+  ::selection {
+    background: oklch(0.86 0.07 254);
+    color: oklch(0.22 0.03 258);
+  }
+  a, button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+@layer components {
+  .page-shell {
+    @apply mx-auto w-full max-w-[1540px] px-4 sm:px-6 xl:px-8;
+  }
+
+  .page-eyebrow {
+    @apply font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-primary;
+  }
+
+  .page-title {
+    @apply text-3xl font-semibold tracking-[-0.035em] text-foreground sm:text-[2.25rem];
+  }
+
+  .page-description {
+    @apply max-w-2xl text-sm leading-6 text-muted-foreground sm:text-[15px];
+  }
+
+  .section-heading {
+    @apply text-lg font-semibold tracking-[-0.02em] text-foreground;
+  }
+
+  .surface-subtle {
+    @apply rounded-lg border border-border bg-card shadow-[0_8px_30px_rgba(15,23,42,0.045)] dark:shadow-[0_10px_34px_rgba(0,0,0,0.16)];
+  }
+
+  .data-table {
+    @apply w-full text-sm;
+  }
+
+  .data-table thead {
+    @apply bg-muted/80;
+  }
+
+  .data-table th {
+    @apply h-10 px-4 text-left font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
+  }
+
+  .data-table td {
+    @apply border-t border-border/80 px-4 py-2.5 align-middle;
+  }
+
+  .data-table tbody tr {
+    @apply transition-colors hover:bg-accent/45;
+  }
+
+  .fade-in-up {
+    animation: fade-in-up 420ms ease-out both;
+  }
+
+  .terminal-label {
+    @apply font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground;
+  }
+
+  .market-positive {
+    @apply text-emerald-700;
+  }
+
+  .market-negative {
+    @apply text-rose-700;
+  }
+
+  .metric-value {
+    @apply font-mono text-xl font-semibold tracking-[-0.03em] tabular-nums;
+  }
+
+  .finance-panel-header {
+    @apply flex items-center justify-between border-b border-border bg-muted/35 px-4 py-3 sm:px-5;
+  }
+
+  .dashboard-panel {
+    @apply overflow-hidden rounded-xl border border-border bg-card shadow-[0_12px_40px_rgba(15,23,42,0.055)] dark:shadow-[0_16px_44px_rgba(0,0,0,0.22)];
+  }
+
+  .soft-grid {
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--border) 48%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--border) 48%, transparent) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
