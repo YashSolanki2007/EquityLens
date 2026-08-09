@@ -63,6 +63,12 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         icon: BrainCircuit,
         section: "custom-signal",
       },
+      {
+        href: "/alternative-signal",
+        label: "Alternative signal",
+        icon: FlaskConical,
+        section: "alternative-signal",
+      },
       ...(process.env.NODE_ENV === "development"
         ? [
             {
