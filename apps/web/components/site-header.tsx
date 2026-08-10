@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { FEATURE_AVAILABILITY } from "@/lib/feature-availability";
 import {
   Activity,
   BarChart3,
@@ -14,6 +15,7 @@ import {
   Moon,
   Newspaper,
   Search,
+  ShieldCheck,
   Shuffle,
   Sun,
   WalletCards,
@@ -57,18 +59,15 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         icon: Activity,
         section: "iv-model-validation",
       },
-      {
-        href: "/custom-signal",
-        label: "Custom signal",
-        icon: BrainCircuit,
-        section: "custom-signal",
-      },
-      {
-        href: "/alternative-signal",
-        label: "Alternative signal",
-        icon: FlaskConical,
-        section: "alternative-signal",
-      },
+      ...(FEATURE_AVAILABILITY.customSignal
+        ? [{ href: "/custom-signal", label: "Custom signal", icon: BrainCircuit, section: "custom-signal" }]
+        : []),
+      ...(FEATURE_AVAILABILITY.alternativeSignal
+        ? [{ href: "/alternative-signal", label: "Alternative signal", icon: FlaskConical, section: "alternative-signal" }]
+        : []),
+      ...(FEATURE_AVAILABILITY.robustSignal
+        ? [{ href: "/robust-signal", label: "Robust signal", icon: ShieldCheck, section: "robust-signal" }]
+        : []),
       ...(process.env.NODE_ENV === "development"
         ? [
             {

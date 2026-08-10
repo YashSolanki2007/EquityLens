@@ -90,9 +90,12 @@ cd apps/web && npm install && npm run dev
 
 Pages: `/` (search), `/search/[id]` (results, funnel, comparison, citations, chat),
 `/company/[ticker]` (market chart, ratios, options, price scenarios, cards,
-filings, facts), `/technical` (semantic and indicator scanner), `/admin`
-(ingestion/card status), `/custom-signal` (saved probability-model baseline), and
-`/alternative-signal` (frozen 21/63 EMA candidate and comparison backtests).
+filings, facts), `/technical` (semantic and indicator scanner), and `/admin`
+(ingestion/card status).
+
+Implemented research features that are intentionally absent from the website are
+recorded in [`docs/dormant-features.txt`](docs/dormant-features.txt). Their source,
+data, and tests remain in the repository for possible future reuse.
 
 ### Signal research
 
@@ -110,13 +113,23 @@ root:
 ```bash
 services/api/.venv/bin/python -m scripts.generate_custom_signal
 services/api/.venv/bin/python -m scripts.generate_alternative_signal
+services/api/.venv/bin/python -m scripts.generate_robust_signal
 ```
 
 The alternative report compares the frozen rule with the original over identical
 windows, discloses neighboring-window sensitivity, and transfers the unchanged
 parameters to Indian indices and a survivorship-biased large-cap diagnostic panel.
-Neither report is evidence of a live, tradeable alpha until it passes genuinely unseen
-forward testing with a licensed total-return data source.
+The robust report adds a 15/45 EMA regime, conservative two-timescale volatility
+budget, the longest available crisis-inclusive window, volatility-only and
+exposure-matched controls, paired stationary-bootstrap intervals, HAC inference,
+Deflated Sharpe, a trial ledger, and explicit promotion gates. It is a defensive
+paper-trading candidate—not validated alpha—and its frozen forward test begins on
+11 August 2026. Same-calendar-day Yahoo bars are excluded so an incomplete live
+session cannot enter the historical report. Full formulas and limitations are in
+[`docs/robust-signal-methodology.md`](docs/robust-signal-methodology.md).
+
+None of the reports is evidence of a live, tradeable alpha until it passes genuinely
+unseen forward testing with a licensed total-return data source.
 
 ### Intraday algorithmic scanner
 

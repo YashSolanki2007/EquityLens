@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-09T21:02:06.284219+05:30",
+  "generated_at": "2026-08-10T10:51:05.337581+05:30",
   "source": "Yahoo Finance delayed NIFTY 50 price-index history (^NSEI)",
   "evaluation_start": "2012-04-23",
-  "evaluation_end": "2026-08-07",
+  "evaluation_end": "2026-08-10",
   "formula": "custom_score = annualized_log_price_slope * beta_binomial_adjusted_Yeo_Johnson_probability",
   "assumptions": {
     "lookback_sessions": 63,
@@ -12,7 +12,7 @@
     "ewma_span": 21,
     "beta_binomial_prior_strength": 20.0,
     "maximum_expected_window": 63,
-    "signal_threshold": 0.008461985510558965,
+    "signal_threshold": 0.00846169750180786,
     "signal_threshold_method": "Point-in-time expanding median of the asset's daily EWMA standard deviation",
     "signal_threshold_quantile": 0.5,
     "signal_threshold_minimum_rows": 126,
@@ -23,59 +23,59 @@
     "dividends": "Excluded: this is a price-index test"
   },
   "primary_metrics": {
-    "threshold": 0.00846199,
+    "threshold": 0.0084617,
     "threshold_method": "expanding_daily_sd_percentile",
     "threshold_quantile": 0.5,
-    "cagr": 0.07764985,
-    "annualized_volatility": 0.10805197,
-    "sharpe_zero_cash": 0.76422444,
-    "sortino_zero_cash": 1.0961783,
-    "annualized_downside_deviation": 0.07533077,
+    "cagr": 0.07769445,
+    "annualized_volatility": 0.10803684,
+    "sharpe_zero_cash": 0.76491552,
+    "sortino_zero_cash": 1.09717211,
+    "annualized_downside_deviation": 0.07532005,
     "max_drawdown": -0.19387249,
-    "total_return": 1.9112392,
-    "market_beta": 0.45253334,
-    "benchmark_cagr": 0.1147927,
-    "benchmark_annualized_volatility": 0.16048756,
-    "benchmark_sharpe_zero_cash": 0.77550909,
-    "benchmark_sortino_zero_cash": 1.08496572,
-    "benchmark_annualized_downside_deviation": 0.1147129,
+    "total_return": 1.91475231,
+    "market_beta": 0.45253444,
+    "benchmark_cagr": 0.11481714,
+    "benchmark_annualized_volatility": 0.16046481,
+    "benchmark_sharpe_zero_cash": 0.77593789,
+    "benchmark_sortino_zero_cash": 1.08556635,
+    "benchmark_annualized_downside_deviation": 0.11469656,
     "benchmark_max_drawdown": -0.38439852,
-    "benchmark_total_return": 3.72457984,
-    "time_in_market": 0.65897436,
+    "benchmark_total_return": 3.73028118,
+    "time_in_market": 0.65907149,
     "entries": 24,
     "exits": 23
   },
   "probability_metrics": {
-    "raw_brier": 0.24641817,
-    "adjusted_brier": 0.24609887,
-    "base_brier": 0.24858545,
-    "raw_log_loss": 0.68593481,
-    "adjusted_log_loss": 0.68531122,
-    "hit_rate": 0.45467503,
-    "mean_raw_probability": 0.46239543,
-    "mean_adjusted_probability": 0.46179826,
-    "mean_expected_window": 2.79874572,
-    "window_with_event_rate": 0.79789054,
-    "forecast_count": 3508
+    "raw_brier": 0.24642356,
+    "adjusted_brier": 0.24612406,
+    "base_brier": 0.24859931,
+    "raw_log_loss": 0.68594561,
+    "adjusted_log_loss": 0.68536203,
+    "hit_rate": 0.45483044,
+    "mean_raw_probability": 0.46240184,
+    "mean_adjusted_probability": 0.46178682,
+    "mean_expected_window": 2.79880308,
+    "window_with_event_rate": 0.79766315,
+    "forecast_count": 3509
   },
   "latest_signal": {
-    "date": "2026-08-07",
-    "daily_beta": 0.00065937,
-    "annualized_beta": 0.18076201,
-    "daily_beta_forecast": 0.00065958,
-    "standardized_daily_forecast": 0.0943536,
-    "r_squared": 0.55307829,
-    "conditional_daily_sd": 0.00699054,
-    "raw_probability": 0.484884,
-    "adjusted_probability": 0.42163826,
-    "raw_custom_score": 0.08764861,
-    "custom_score": 0.07621618,
-    "signal_threshold": 0.00846199,
+    "date": "2026-08-10",
+    "daily_beta": 0.00069414,
+    "annualized_beta": 0.19115474,
+    "daily_beta_forecast": 0.00069438,
+    "standardized_daily_forecast": 0.10417869,
+    "r_squared": 0.58627215,
+    "conditional_daily_sd": 0.00666529,
+    "raw_probability": 0.48124135,
+    "adjusted_probability": 0.461949,
+    "raw_custom_score": 0.09199156,
+    "custom_score": 0.08830374,
+    "signal_threshold": 0.0084617,
     "position": "long",
     "expected_window": 3,
     "window_observations": 3,
-    "events_in_window": 0,
-    "days_since_hit": 4,
+    "events_in_window": 1,
+    "days_since_hit": 0,
     "yeo_johnson_lambda": 1.06380887,
     "transformed_mean": 0.05363849,
     "transformed_sd": 1.08158122
@@ -101,14 +101,14 @@
     },
     {
       "bin": 3,
-      "predicted": 0.46044986,
-      "observed": 0.44079886,
-      "count": 701
+      "predicted": 0.46046665,
+      "observed": 0.44017094,
+      "count": 702
     },
     {
       "bin": 4,
-      "predicted": 0.48554394,
-      "observed": 0.48005698,
+      "predicted": 0.48556195,
+      "observed": 0.48148148,
       "count": 702
     },
     {
@@ -127,15 +127,15 @@
     },
     {
       "bin": 2,
-      "predicted": 0.43091527,
-      "observed": 0.42592593,
+      "predicted": 0.43087946,
+      "observed": 0.42735043,
       "count": 702
     },
     {
       "bin": 3,
-      "predicted": 0.46245955,
-      "observed": 0.45363766,
-      "count": 701
+      "predicted": 0.46243721,
+      "observed": 0.45299145,
+      "count": 702
     },
     {
       "bin": 4,
@@ -11340,8 +11340,4076 @@
       "custom_score": 0.076216,
       "signal_threshold": 0.008462,
       "position": 1.0
+    },
+    {
+      "date": "2026-08-10",
+      "strategy_equity": 2.914752,
+      "benchmark_equity": 4.730281,
+      "strategy_drawdown": -0.007023,
+      "benchmark_drawdown": -0.065642,
+      "annualized_slope": 0.191155,
+      "predicted_return": 0.000694,
+      "raw_probability": 0.481241,
+      "adjusted_probability": 0.461949,
+      "raw_custom_score": 0.091992,
+      "custom_score": 0.088304,
+      "signal_threshold": 0.008462,
+      "position": 1.0
+    },
+    {
+      "date": "2026-08-14",
+      "strategy_equity": 2.914752,
+      "benchmark_equity": 4.730281,
+      "strategy_drawdown": -0.007023,
+      "benchmark_drawdown": -0.065642,
+      "annualized_slope": 0.191155,
+      "predicted_return": 0.000694,
+      "raw_probability": 0.481241,
+      "adjusted_probability": 0.461949,
+      "raw_custom_score": 0.091992,
+      "custom_score": 0.088304,
+      "signal_threshold": 0.008462,
+      "position": 1.0
     }
   ],
+  "momentum_diagnostic": {
+    "percentile_lookback_sessions": 252,
+    "minimum_history_sessions": 63,
+    "points": [
+      {
+        "date": "2024-07-29",
+        "close": 24836.099609,
+        "custom_score": 0.279509,
+        "score_percentile": 0.900794,
+        "signal_threshold": 0.008658,
+        "position": 1.0
+      },
+      {
+        "date": "2024-07-30",
+        "close": 24857.300781,
+        "custom_score": 0.281351,
+        "score_percentile": 0.900794,
+        "signal_threshold": 0.008656,
+        "position": 1.0
+      },
+      {
+        "date": "2024-07-31",
+        "close": 24951.150391,
+        "custom_score": 0.285395,
+        "score_percentile": 0.904762,
+        "signal_threshold": 0.008654,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-01",
+        "close": 25010.900391,
+        "custom_score": 0.318062,
+        "score_percentile": 0.928571,
+        "signal_threshold": 0.008652,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-02",
+        "close": 24717.699219,
+        "custom_score": 0.32993,
+        "score_percentile": 0.936508,
+        "signal_threshold": 0.008651,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-05",
+        "close": 24055.599609,
+        "custom_score": 0.313195,
+        "score_percentile": 0.920635,
+        "signal_threshold": 0.008651,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-06",
+        "close": 23992.550781,
+        "custom_score": 0.274864,
+        "score_percentile": 0.857143,
+        "signal_threshold": 0.008651,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-07",
+        "close": 24297.5,
+        "custom_score": 0.298544,
+        "score_percentile": 0.900794,
+        "signal_threshold": 0.008652,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-08",
+        "close": 24117.0,
+        "custom_score": 0.288368,
+        "score_percentile": 0.888889,
+        "signal_threshold": 0.008654,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-09",
+        "close": 24367.5,
+        "custom_score": 0.303449,
+        "score_percentile": 0.904762,
+        "signal_threshold": 0.008656,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-12",
+        "close": 24347.0,
+        "custom_score": 0.265061,
+        "score_percentile": 0.825397,
+        "signal_threshold": 0.008658,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-13",
+        "close": 24139.0,
+        "custom_score": 0.25159,
+        "score_percentile": 0.793651,
+        "signal_threshold": 0.008658,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-14",
+        "close": 24143.75,
+        "custom_score": 0.215857,
+        "score_percentile": 0.742063,
+        "signal_threshold": 0.008658,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-16",
+        "close": 24541.150391,
+        "custom_score": 0.231422,
+        "score_percentile": 0.761905,
+        "signal_threshold": 0.008659,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-19",
+        "close": 24572.650391,
+        "custom_score": 0.223055,
+        "score_percentile": 0.75,
+        "signal_threshold": 0.00866,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-20",
+        "close": 24698.849609,
+        "custom_score": 0.236169,
+        "score_percentile": 0.77381,
+        "signal_threshold": 0.008661,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-21",
+        "close": 24770.199219,
+        "custom_score": 0.229326,
+        "score_percentile": 0.753968,
+        "signal_threshold": 0.008661,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-22",
+        "close": 24811.5,
+        "custom_score": 0.242385,
+        "score_percentile": 0.777778,
+        "signal_threshold": 0.008662,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-23",
+        "close": 24823.150391,
+        "custom_score": 0.220683,
+        "score_percentile": 0.738095,
+        "signal_threshold": 0.008661,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-26",
+        "close": 25010.599609,
+        "custom_score": 0.219681,
+        "score_percentile": 0.734127,
+        "signal_threshold": 0.008661,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-27",
+        "close": 25017.75,
+        "custom_score": 0.198539,
+        "score_percentile": 0.702381,
+        "signal_threshold": 0.00866,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-28",
+        "close": 25052.349609,
+        "custom_score": 0.195331,
+        "score_percentile": 0.694444,
+        "signal_threshold": 0.008659,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-29",
+        "close": 25151.949219,
+        "custom_score": 0.19068,
+        "score_percentile": 0.690476,
+        "signal_threshold": 0.008658,
+        "position": 1.0
+      },
+      {
+        "date": "2024-08-30",
+        "close": 25235.900391,
+        "custom_score": 0.201356,
+        "score_percentile": 0.710317,
+        "signal_threshold": 0.008658,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-02",
+        "close": 25278.699219,
+        "custom_score": 0.210882,
+        "score_percentile": 0.718254,
+        "signal_threshold": 0.008658,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-03",
+        "close": 25279.849609,
+        "custom_score": 0.193638,
+        "score_percentile": 0.68254,
+        "signal_threshold": 0.008658,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-04",
+        "close": 25198.699219,
+        "custom_score": 0.162827,
+        "score_percentile": 0.650794,
+        "signal_threshold": 0.008658,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-05",
+        "close": 25145.099609,
+        "custom_score": 0.139723,
+        "score_percentile": 0.607143,
+        "signal_threshold": 0.008656,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-06",
+        "close": 24852.150391,
+        "custom_score": 0.134203,
+        "score_percentile": 0.59127,
+        "signal_threshold": 0.008654,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-09",
+        "close": 24936.400391,
+        "custom_score": 0.142569,
+        "score_percentile": 0.615079,
+        "signal_threshold": 0.008652,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-10",
+        "close": 25041.099609,
+        "custom_score": 0.150252,
+        "score_percentile": 0.626984,
+        "signal_threshold": 0.008651,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-11",
+        "close": 24918.449219,
+        "custom_score": 0.143485,
+        "score_percentile": 0.611111,
+        "signal_threshold": 0.008651,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-12",
+        "close": 25388.900391,
+        "custom_score": 0.138525,
+        "score_percentile": 0.583333,
+        "signal_threshold": 0.008651,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-13",
+        "close": 25356.5,
+        "custom_score": 0.13568,
+        "score_percentile": 0.575397,
+        "signal_threshold": 0.00865,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-16",
+        "close": 25383.75,
+        "custom_score": 0.133093,
+        "score_percentile": 0.56746,
+        "signal_threshold": 0.008649,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-17",
+        "close": 25418.550781,
+        "custom_score": 0.143004,
+        "score_percentile": 0.607143,
+        "signal_threshold": 0.008648,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-18",
+        "close": 25377.550781,
+        "custom_score": 0.128022,
+        "score_percentile": 0.555556,
+        "signal_threshold": 0.008646,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-19",
+        "close": 25415.800781,
+        "custom_score": 0.125096,
+        "score_percentile": 0.547619,
+        "signal_threshold": 0.008646,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-20",
+        "close": 25790.949219,
+        "custom_score": 0.13653,
+        "score_percentile": 0.571429,
+        "signal_threshold": 0.008646,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-23",
+        "close": 25939.050781,
+        "custom_score": 0.13677,
+        "score_percentile": 0.571429,
+        "signal_threshold": 0.008646,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-24",
+        "close": 25940.400391,
+        "custom_score": 0.132116,
+        "score_percentile": 0.547619,
+        "signal_threshold": 0.008645,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-25",
+        "close": 26004.150391,
+        "custom_score": 0.134627,
+        "score_percentile": 0.559524,
+        "signal_threshold": 0.008644,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-26",
+        "close": 26216.050781,
+        "custom_score": 0.140422,
+        "score_percentile": 0.59127,
+        "signal_threshold": 0.008643,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-27",
+        "close": 26178.949219,
+        "custom_score": 0.144737,
+        "score_percentile": 0.615079,
+        "signal_threshold": 0.008642,
+        "position": 1.0
+      },
+      {
+        "date": "2024-09-30",
+        "close": 25810.849609,
+        "custom_score": 0.13731,
+        "score_percentile": 0.563492,
+        "signal_threshold": 0.00864,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-01",
+        "close": 25796.900391,
+        "custom_score": 0.125384,
+        "score_percentile": 0.519841,
+        "signal_threshold": 0.00864,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-03",
+        "close": 25250.099609,
+        "custom_score": 0.132073,
+        "score_percentile": 0.527778,
+        "signal_threshold": 0.00864,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-04",
+        "close": 25014.599609,
+        "custom_score": 0.127672,
+        "score_percentile": 0.519841,
+        "signal_threshold": 0.00864,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-07",
+        "close": 24795.75,
+        "custom_score": 0.121409,
+        "score_percentile": 0.492063,
+        "signal_threshold": 0.00864,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-08",
+        "close": 25013.150391,
+        "custom_score": 0.128595,
+        "score_percentile": 0.52381,
+        "signal_threshold": 0.008642,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-09",
+        "close": 24981.949219,
+        "custom_score": 0.123981,
+        "score_percentile": 0.5,
+        "signal_threshold": 0.008643,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-10",
+        "close": 24998.449219,
+        "custom_score": 0.107863,
+        "score_percentile": 0.452381,
+        "signal_threshold": 0.008644,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-11",
+        "close": 24964.25,
+        "custom_score": 0.102294,
+        "score_percentile": 0.440476,
+        "signal_threshold": 0.008643,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-14",
+        "close": 25127.949219,
+        "custom_score": 0.109496,
+        "score_percentile": 0.456349,
+        "signal_threshold": 0.008642,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-15",
+        "close": 25057.349609,
+        "custom_score": 0.106447,
+        "score_percentile": 0.444444,
+        "signal_threshold": 0.00864,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-16",
+        "close": 24971.300781,
+        "custom_score": 0.093643,
+        "score_percentile": 0.384921,
+        "signal_threshold": 0.00864,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-17",
+        "close": 24749.849609,
+        "custom_score": 0.090328,
+        "score_percentile": 0.373016,
+        "signal_threshold": 0.00864,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-18",
+        "close": 24854.050781,
+        "custom_score": 0.093841,
+        "score_percentile": 0.388889,
+        "signal_threshold": 0.008639,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-21",
+        "close": 24781.099609,
+        "custom_score": 0.087536,
+        "score_percentile": 0.353175,
+        "signal_threshold": 0.008639,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-22",
+        "close": 24472.099609,
+        "custom_score": 0.071009,
+        "score_percentile": 0.269841,
+        "signal_threshold": 0.008637,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-23",
+        "close": 24435.5,
+        "custom_score": 0.06193,
+        "score_percentile": 0.246032,
+        "signal_threshold": 0.008636,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-24",
+        "close": 24399.400391,
+        "custom_score": 0.052617,
+        "score_percentile": 0.214286,
+        "signal_threshold": 0.008635,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-25",
+        "close": 24180.800781,
+        "custom_score": 0.045165,
+        "score_percentile": 0.190476,
+        "signal_threshold": 0.008634,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-28",
+        "close": 24339.150391,
+        "custom_score": 0.042903,
+        "score_percentile": 0.186508,
+        "signal_threshold": 0.008632,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-29",
+        "close": 24466.849609,
+        "custom_score": 0.040934,
+        "score_percentile": 0.162698,
+        "signal_threshold": 0.008631,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-30",
+        "close": 24340.849609,
+        "custom_score": 0.032272,
+        "score_percentile": 0.130952,
+        "signal_threshold": 0.008629,
+        "position": 1.0
+      },
+      {
+        "date": "2024-10-31",
+        "close": 24205.349609,
+        "custom_score": 0.024155,
+        "score_percentile": 0.123016,
+        "signal_threshold": 0.008627,
+        "position": 1.0
+      },
+      {
+        "date": "2024-11-01",
+        "close": 24304.349609,
+        "custom_score": 0.019191,
+        "score_percentile": 0.115079,
+        "signal_threshold": 0.008626,
+        "position": 1.0
+      },
+      {
+        "date": "2024-11-04",
+        "close": 23995.349609,
+        "custom_score": 0.003825,
+        "score_percentile": 0.099206,
+        "signal_threshold": 0.008626,
+        "position": 1.0
+      },
+      {
+        "date": "2024-11-05",
+        "close": 24213.300781,
+        "custom_score": -0.009034,
+        "score_percentile": 0.071429,
+        "signal_threshold": 0.008624,
+        "position": 1.0
+      },
+      {
+        "date": "2024-11-06",
+        "close": 24484.050781,
+        "custom_score": -0.015416,
+        "score_percentile": 0.019841,
+        "signal_threshold": 0.008623,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-07",
+        "close": 24199.349609,
+        "custom_score": -0.027918,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008623,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-08",
+        "close": 24148.199219,
+        "custom_score": -0.037055,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008623,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-11",
+        "close": 24141.300781,
+        "custom_score": -0.045946,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008622,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-12",
+        "close": 23883.449219,
+        "custom_score": -0.05742,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008621,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-13",
+        "close": 23559.050781,
+        "custom_score": -0.070277,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-14",
+        "close": 23532.699219,
+        "custom_score": -0.087542,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-18",
+        "close": 23453.800781,
+        "custom_score": -0.097589,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008618,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-19",
+        "close": 23518.5,
+        "custom_score": -0.096521,
+        "score_percentile": 0.003968,
+        "signal_threshold": 0.008617,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-21",
+        "close": 23349.900391,
+        "custom_score": -0.103855,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008616,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-22",
+        "close": 23907.25,
+        "custom_score": -0.102167,
+        "score_percentile": 0.003968,
+        "signal_threshold": 0.008615,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-25",
+        "close": 24221.900391,
+        "custom_score": -0.105049,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008616,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-26",
+        "close": 24194.5,
+        "custom_score": -0.095128,
+        "score_percentile": 0.019841,
+        "signal_threshold": 0.008617,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-27",
+        "close": 24274.900391,
+        "custom_score": -0.095859,
+        "score_percentile": 0.019841,
+        "signal_threshold": 0.008618,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-28",
+        "close": 23914.150391,
+        "custom_score": -0.110563,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2024-11-29",
+        "close": 24131.099609,
+        "custom_score": -0.111583,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-02",
+        "close": 24276.050781,
+        "custom_score": -0.111267,
+        "score_percentile": 0.003968,
+        "signal_threshold": 0.008621,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-03",
+        "close": 24457.150391,
+        "custom_score": -0.098181,
+        "score_percentile": 0.02381,
+        "signal_threshold": 0.008622,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-04",
+        "close": 24467.449219,
+        "custom_score": -0.096667,
+        "score_percentile": 0.031746,
+        "signal_threshold": 0.008623,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-05",
+        "close": 24708.400391,
+        "custom_score": -0.094929,
+        "score_percentile": 0.047619,
+        "signal_threshold": 0.008623,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-06",
+        "close": 24677.800781,
+        "custom_score": -0.104318,
+        "score_percentile": 0.015873,
+        "signal_threshold": 0.008623,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-09",
+        "close": 24619.0,
+        "custom_score": -0.114889,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008624,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-10",
+        "close": 24610.050781,
+        "custom_score": -0.113729,
+        "score_percentile": 0.003968,
+        "signal_threshold": 0.008623,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-11",
+        "close": 24641.800781,
+        "custom_score": -0.100873,
+        "score_percentile": 0.035714,
+        "signal_threshold": 0.008623,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-12",
+        "close": 24548.699219,
+        "custom_score": -0.100198,
+        "score_percentile": 0.039683,
+        "signal_threshold": 0.008623,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-13",
+        "close": 24768.300781,
+        "custom_score": -0.097115,
+        "score_percentile": 0.051587,
+        "signal_threshold": 0.008622,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-16",
+        "close": 24668.25,
+        "custom_score": -0.104338,
+        "score_percentile": 0.02381,
+        "signal_threshold": 0.008621,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-17",
+        "close": 24336.0,
+        "custom_score": -0.103556,
+        "score_percentile": 0.035714,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-18",
+        "close": 24198.849609,
+        "custom_score": -0.111602,
+        "score_percentile": 0.007937,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-19",
+        "close": 23951.699219,
+        "custom_score": -0.111352,
+        "score_percentile": 0.015873,
+        "signal_threshold": 0.008618,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-20",
+        "close": 23587.5,
+        "custom_score": -0.113138,
+        "score_percentile": 0.007937,
+        "signal_threshold": 0.008617,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-23",
+        "close": 23753.449219,
+        "custom_score": -0.10134,
+        "score_percentile": 0.055556,
+        "signal_threshold": 0.008618,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-24",
+        "close": 23727.650391,
+        "custom_score": -0.098192,
+        "score_percentile": 0.06746,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-26",
+        "close": 23750.199219,
+        "custom_score": -0.085505,
+        "score_percentile": 0.107143,
+        "signal_threshold": 0.008618,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-27",
+        "close": 23813.400391,
+        "custom_score": -0.081403,
+        "score_percentile": 0.111111,
+        "signal_threshold": 0.008617,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-30",
+        "close": 23644.900391,
+        "custom_score": -0.076858,
+        "score_percentile": 0.115079,
+        "signal_threshold": 0.008616,
+        "position": 0.0
+      },
+      {
+        "date": "2024-12-31",
+        "close": 23644.800781,
+        "custom_score": -0.07187,
+        "score_percentile": 0.119048,
+        "signal_threshold": 0.008615,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-01",
+        "close": 23742.900391,
+        "custom_score": -0.067793,
+        "score_percentile": 0.126984,
+        "signal_threshold": 0.008615,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-02",
+        "close": 24188.650391,
+        "custom_score": -0.055619,
+        "score_percentile": 0.134921,
+        "signal_threshold": 0.008614,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-03",
+        "close": 24004.75,
+        "custom_score": -0.05851,
+        "score_percentile": 0.130952,
+        "signal_threshold": 0.008615,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-06",
+        "close": 23616.050781,
+        "custom_score": -0.0644,
+        "score_percentile": 0.130952,
+        "signal_threshold": 0.008615,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-07",
+        "close": 23707.900391,
+        "custom_score": -0.064441,
+        "score_percentile": 0.130952,
+        "signal_threshold": 0.008616,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-08",
+        "close": 23688.949219,
+        "custom_score": -0.063039,
+        "score_percentile": 0.138889,
+        "signal_threshold": 0.008617,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-09",
+        "close": 23526.5,
+        "custom_score": -0.062621,
+        "score_percentile": 0.142857,
+        "signal_threshold": 0.008618,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-10",
+        "close": 23431.5,
+        "custom_score": -0.068165,
+        "score_percentile": 0.126984,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-13",
+        "close": 23085.949219,
+        "custom_score": -0.070427,
+        "score_percentile": 0.123016,
+        "signal_threshold": 0.008618,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-14",
+        "close": 23176.050781,
+        "custom_score": -0.064392,
+        "score_percentile": 0.146825,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-15",
+        "close": 23213.199219,
+        "custom_score": -0.05813,
+        "score_percentile": 0.162698,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-16",
+        "close": 23311.800781,
+        "custom_score": -0.051587,
+        "score_percentile": 0.174603,
+        "signal_threshold": 0.00862,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-17",
+        "close": 23203.199219,
+        "custom_score": -0.058306,
+        "score_percentile": 0.162698,
+        "signal_threshold": 0.008618,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-20",
+        "close": 23344.75,
+        "custom_score": -0.057627,
+        "score_percentile": 0.170635,
+        "signal_threshold": 0.008617,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-21",
+        "close": 23024.650391,
+        "custom_score": -0.065145,
+        "score_percentile": 0.138889,
+        "signal_threshold": 0.008616,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-22",
+        "close": 23155.349609,
+        "custom_score": -0.061174,
+        "score_percentile": 0.162698,
+        "signal_threshold": 0.008615,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-23",
+        "close": 23205.349609,
+        "custom_score": -0.062573,
+        "score_percentile": 0.162698,
+        "signal_threshold": 0.008615,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-24",
+        "close": 23092.199219,
+        "custom_score": -0.064534,
+        "score_percentile": 0.142857,
+        "signal_threshold": 0.008614,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-27",
+        "close": 22829.150391,
+        "custom_score": -0.076217,
+        "score_percentile": 0.119048,
+        "signal_threshold": 0.008614,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-28",
+        "close": 22957.25,
+        "custom_score": -0.07911,
+        "score_percentile": 0.115079,
+        "signal_threshold": 0.008613,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-29",
+        "close": 23163.099609,
+        "custom_score": -0.072454,
+        "score_percentile": 0.126984,
+        "signal_threshold": 0.008613,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-30",
+        "close": 23249.5,
+        "custom_score": -0.065296,
+        "score_percentile": 0.150794,
+        "signal_threshold": 0.008612,
+        "position": 0.0
+      },
+      {
+        "date": "2025-01-31",
+        "close": 23508.400391,
+        "custom_score": -0.06536,
+        "score_percentile": 0.150794,
+        "signal_threshold": 0.008612,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-01",
+        "close": 23482.150391,
+        "custom_score": -0.072053,
+        "score_percentile": 0.130952,
+        "signal_threshold": 0.008612,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-03",
+        "close": 23361.050781,
+        "custom_score": -0.080987,
+        "score_percentile": 0.115079,
+        "signal_threshold": 0.008611,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-04",
+        "close": 23739.25,
+        "custom_score": -0.079697,
+        "score_percentile": 0.119048,
+        "signal_threshold": 0.008611,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-05",
+        "close": 23696.300781,
+        "custom_score": -0.076148,
+        "score_percentile": 0.134921,
+        "signal_threshold": 0.008611,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-06",
+        "close": 23603.349609,
+        "custom_score": -0.074666,
+        "score_percentile": 0.138889,
+        "signal_threshold": 0.008611,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-07",
+        "close": 23559.949219,
+        "custom_score": -0.080478,
+        "score_percentile": 0.119048,
+        "signal_threshold": 0.00861,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-10",
+        "close": 23381.599609,
+        "custom_score": -0.080547,
+        "score_percentile": 0.119048,
+        "signal_threshold": 0.008608,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-11",
+        "close": 23071.800781,
+        "custom_score": -0.08443,
+        "score_percentile": 0.111111,
+        "signal_threshold": 0.008607,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-12",
+        "close": 23045.25,
+        "custom_score": -0.089765,
+        "score_percentile": 0.103175,
+        "signal_threshold": 0.008607,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-13",
+        "close": 23031.400391,
+        "custom_score": -0.086757,
+        "score_percentile": 0.111111,
+        "signal_threshold": 0.008605,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-14",
+        "close": 22929.25,
+        "custom_score": -0.092214,
+        "score_percentile": 0.103175,
+        "signal_threshold": 0.008603,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-17",
+        "close": 22959.5,
+        "custom_score": -0.087396,
+        "score_percentile": 0.115079,
+        "signal_threshold": 0.008602,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-18",
+        "close": 22945.300781,
+        "custom_score": -0.091861,
+        "score_percentile": 0.107143,
+        "signal_threshold": 0.0086,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-19",
+        "close": 22932.900391,
+        "custom_score": -0.083787,
+        "score_percentile": 0.134921,
+        "signal_threshold": 0.0086,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-20",
+        "close": 22913.150391,
+        "custom_score": -0.084019,
+        "score_percentile": 0.134921,
+        "signal_threshold": 0.008599,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-21",
+        "close": 22795.900391,
+        "custom_score": -0.095455,
+        "score_percentile": 0.095238,
+        "signal_threshold": 0.008599,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-24",
+        "close": 22553.349609,
+        "custom_score": -0.10896,
+        "score_percentile": 0.031746,
+        "signal_threshold": 0.008598,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-25",
+        "close": 22547.550781,
+        "custom_score": -0.111729,
+        "score_percentile": 0.011905,
+        "signal_threshold": 0.008598,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-27",
+        "close": 22545.050781,
+        "custom_score": -0.101657,
+        "score_percentile": 0.063492,
+        "signal_threshold": 0.008597,
+        "position": 0.0
+      },
+      {
+        "date": "2025-02-28",
+        "close": 22124.699219,
+        "custom_score": -0.108534,
+        "score_percentile": 0.039683,
+        "signal_threshold": 0.008596,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-03",
+        "close": 22119.300781,
+        "custom_score": -0.109929,
+        "score_percentile": 0.035714,
+        "signal_threshold": 0.008596,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-04",
+        "close": 22082.650391,
+        "custom_score": -0.123369,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008596,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-05",
+        "close": 22337.300781,
+        "custom_score": -0.112696,
+        "score_percentile": 0.015873,
+        "signal_threshold": 0.008596,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-06",
+        "close": 22544.699219,
+        "custom_score": -0.111859,
+        "score_percentile": 0.019841,
+        "signal_threshold": 0.008594,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-07",
+        "close": 22552.5,
+        "custom_score": -0.097664,
+        "score_percentile": 0.107143,
+        "signal_threshold": 0.008593,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-10",
+        "close": 22460.300781,
+        "custom_score": -0.107775,
+        "score_percentile": 0.059524,
+        "signal_threshold": 0.008592,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-11",
+        "close": 22497.900391,
+        "custom_score": -0.105274,
+        "score_percentile": 0.063492,
+        "signal_threshold": 0.008592,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-12",
+        "close": 22470.5,
+        "custom_score": -0.102889,
+        "score_percentile": 0.087302,
+        "signal_threshold": 0.008592,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-13",
+        "close": 22397.199219,
+        "custom_score": -0.099787,
+        "score_percentile": 0.111111,
+        "signal_threshold": 0.008592,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-17",
+        "close": 22508.75,
+        "custom_score": -0.096729,
+        "score_percentile": 0.134921,
+        "signal_threshold": 0.008591,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-18",
+        "close": 22834.300781,
+        "custom_score": -0.095144,
+        "score_percentile": 0.154762,
+        "signal_threshold": 0.008591,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-19",
+        "close": 22907.599609,
+        "custom_score": -0.081411,
+        "score_percentile": 0.206349,
+        "signal_threshold": 0.008589,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-20",
+        "close": 23190.650391,
+        "custom_score": -0.078424,
+        "score_percentile": 0.234127,
+        "signal_threshold": 0.008588,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-21",
+        "close": 23350.400391,
+        "custom_score": -0.075335,
+        "score_percentile": 0.25,
+        "signal_threshold": 0.008588,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-24",
+        "close": 23658.349609,
+        "custom_score": -0.070226,
+        "score_percentile": 0.277778,
+        "signal_threshold": 0.008588,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-25",
+        "close": 23668.650391,
+        "custom_score": -0.064887,
+        "score_percentile": 0.301587,
+        "signal_threshold": 0.008586,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-26",
+        "close": 23486.849609,
+        "custom_score": -0.067563,
+        "score_percentile": 0.289683,
+        "signal_threshold": 0.008584,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-27",
+        "close": 23591.949219,
+        "custom_score": -0.061094,
+        "score_percentile": 0.34127,
+        "signal_threshold": 0.008581,
+        "position": 0.0
+      },
+      {
+        "date": "2025-03-28",
+        "close": 23519.349609,
+        "custom_score": -0.06158,
+        "score_percentile": 0.337302,
+        "signal_threshold": 0.008579,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-01",
+        "close": 23165.699219,
+        "custom_score": -0.0583,
+        "score_percentile": 0.357143,
+        "signal_threshold": 0.008578,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-02",
+        "close": 23332.349609,
+        "custom_score": -0.052598,
+        "score_percentile": 0.376984,
+        "signal_threshold": 0.008578,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-03",
+        "close": 23250.099609,
+        "custom_score": -0.044226,
+        "score_percentile": 0.388889,
+        "signal_threshold": 0.008576,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-04",
+        "close": 22904.449219,
+        "custom_score": -0.039204,
+        "score_percentile": 0.392857,
+        "signal_threshold": 0.008575,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-07",
+        "close": 22161.599609,
+        "custom_score": -0.045866,
+        "score_percentile": 0.388889,
+        "signal_threshold": 0.008576,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-08",
+        "close": 22535.849609,
+        "custom_score": -0.040989,
+        "score_percentile": 0.396825,
+        "signal_threshold": 0.008578,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-09",
+        "close": 22399.150391,
+        "custom_score": -0.040683,
+        "score_percentile": 0.400794,
+        "signal_threshold": 0.008578,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-11",
+        "close": 22828.550781,
+        "custom_score": -0.034778,
+        "score_percentile": 0.412698,
+        "signal_threshold": 0.008579,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-15",
+        "close": 23328.550781,
+        "custom_score": -0.029706,
+        "score_percentile": 0.416667,
+        "signal_threshold": 0.008581,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-16",
+        "close": 23437.199219,
+        "custom_score": -0.023554,
+        "score_percentile": 0.424603,
+        "signal_threshold": 0.008584,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-17",
+        "close": 23851.650391,
+        "custom_score": -0.01733,
+        "score_percentile": 0.428571,
+        "signal_threshold": 0.008586,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-21",
+        "close": 24125.550781,
+        "custom_score": -0.009174,
+        "score_percentile": 0.436508,
+        "signal_threshold": 0.008588,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-22",
+        "close": 24167.25,
+        "custom_score": -3e-05,
+        "score_percentile": 0.444444,
+        "signal_threshold": 0.008588,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-23",
+        "close": 24328.949219,
+        "custom_score": 0.011357,
+        "score_percentile": 0.452381,
+        "signal_threshold": 0.008588,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-24",
+        "close": 24246.699219,
+        "custom_score": 0.023146,
+        "score_percentile": 0.460317,
+        "signal_threshold": 0.008589,
+        "position": 0.0
+      },
+      {
+        "date": "2025-04-25",
+        "close": 24039.349609,
+        "custom_score": 0.030537,
+        "score_percentile": 0.468254,
+        "signal_threshold": 0.008591,
+        "position": 1.0
+      },
+      {
+        "date": "2025-04-28",
+        "close": 24328.5,
+        "custom_score": 0.044943,
+        "score_percentile": 0.527778,
+        "signal_threshold": 0.008591,
+        "position": 1.0
+      },
+      {
+        "date": "2025-04-29",
+        "close": 24335.949219,
+        "custom_score": 0.056799,
+        "score_percentile": 0.571429,
+        "signal_threshold": 0.008592,
+        "position": 1.0
+      },
+      {
+        "date": "2025-04-30",
+        "close": 24334.199219,
+        "custom_score": 0.061396,
+        "score_percentile": 0.587302,
+        "signal_threshold": 0.008592,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-02",
+        "close": 24346.699219,
+        "custom_score": 0.075118,
+        "score_percentile": 0.615079,
+        "signal_threshold": 0.008592,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-05",
+        "close": 24461.150391,
+        "custom_score": 0.092256,
+        "score_percentile": 0.650794,
+        "signal_threshold": 0.008592,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-06",
+        "close": 24379.599609,
+        "custom_score": 0.095197,
+        "score_percentile": 0.662698,
+        "signal_threshold": 0.008593,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-07",
+        "close": 24414.400391,
+        "custom_score": 0.106395,
+        "score_percentile": 0.674603,
+        "signal_threshold": 0.008594,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-08",
+        "close": 24273.800781,
+        "custom_score": 0.113538,
+        "score_percentile": 0.690476,
+        "signal_threshold": 0.008596,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-09",
+        "close": 24008.0,
+        "custom_score": 0.122998,
+        "score_percentile": 0.706349,
+        "signal_threshold": 0.008596,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-12",
+        "close": 24924.699219,
+        "custom_score": 0.148993,
+        "score_percentile": 0.809524,
+        "signal_threshold": 0.008596,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-13",
+        "close": 24578.349609,
+        "custom_score": 0.167155,
+        "score_percentile": 0.829365,
+        "signal_threshold": 0.008596,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-14",
+        "close": 24666.900391,
+        "custom_score": 0.185128,
+        "score_percentile": 0.845238,
+        "signal_threshold": 0.008597,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-15",
+        "close": 25062.099609,
+        "custom_score": 0.215533,
+        "score_percentile": 0.876984,
+        "signal_threshold": 0.008598,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-16",
+        "close": 25019.800781,
+        "custom_score": 0.236265,
+        "score_percentile": 0.924603,
+        "signal_threshold": 0.008598,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-19",
+        "close": 24945.449219,
+        "custom_score": 0.232177,
+        "score_percentile": 0.904762,
+        "signal_threshold": 0.008599,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-20",
+        "close": 24683.900391,
+        "custom_score": 0.219812,
+        "score_percentile": 0.880952,
+        "signal_threshold": 0.008599,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-21",
+        "close": 24813.449219,
+        "custom_score": 0.252254,
+        "score_percentile": 0.93254,
+        "signal_threshold": 0.0086,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-22",
+        "close": 24609.699219,
+        "custom_score": 0.259863,
+        "score_percentile": 0.93254,
+        "signal_threshold": 0.0086,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-23",
+        "close": 24853.150391,
+        "custom_score": 0.293645,
+        "score_percentile": 0.980159,
+        "signal_threshold": 0.008602,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-26",
+        "close": 25001.150391,
+        "custom_score": 0.30344,
+        "score_percentile": 0.984127,
+        "signal_threshold": 0.008603,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-27",
+        "close": 24826.199219,
+        "custom_score": 0.311065,
+        "score_percentile": 0.988095,
+        "signal_threshold": 0.008605,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-28",
+        "close": 24752.449219,
+        "custom_score": 0.288621,
+        "score_percentile": 0.968254,
+        "signal_threshold": 0.008607,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-29",
+        "close": 24833.599609,
+        "custom_score": 0.292688,
+        "score_percentile": 0.968254,
+        "signal_threshold": 0.008607,
+        "position": 1.0
+      },
+      {
+        "date": "2025-05-30",
+        "close": 24750.699219,
+        "custom_score": 0.294086,
+        "score_percentile": 0.972222,
+        "signal_threshold": 0.008608,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-02",
+        "close": 24716.599609,
+        "custom_score": 0.291421,
+        "score_percentile": 0.960317,
+        "signal_threshold": 0.00861,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-03",
+        "close": 24542.5,
+        "custom_score": 0.258998,
+        "score_percentile": 0.900794,
+        "signal_threshold": 0.008611,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-04",
+        "close": 24620.199219,
+        "custom_score": 0.282758,
+        "score_percentile": 0.944444,
+        "signal_threshold": 0.008611,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-05",
+        "close": 24750.900391,
+        "custom_score": 0.301998,
+        "score_percentile": 0.97619,
+        "signal_threshold": 0.008612,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-06",
+        "close": 25003.050781,
+        "custom_score": 0.323424,
+        "score_percentile": 0.996032,
+        "signal_threshold": 0.008611,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-09",
+        "close": 25103.199219,
+        "custom_score": 0.314578,
+        "score_percentile": 0.988095,
+        "signal_threshold": 0.008611,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-10",
+        "close": 25104.25,
+        "custom_score": 0.282068,
+        "score_percentile": 0.928571,
+        "signal_threshold": 0.00861,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-11",
+        "close": 25141.400391,
+        "custom_score": 0.251975,
+        "score_percentile": 0.873016,
+        "signal_threshold": 0.008608,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-12",
+        "close": 24888.199219,
+        "custom_score": 0.224463,
+        "score_percentile": 0.825397,
+        "signal_threshold": 0.008607,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-13",
+        "close": 24718.599609,
+        "custom_score": 0.216831,
+        "score_percentile": 0.801587,
+        "signal_threshold": 0.008607,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-16",
+        "close": 24946.5,
+        "custom_score": 0.234992,
+        "score_percentile": 0.853175,
+        "signal_threshold": 0.008605,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-17",
+        "close": 24853.400391,
+        "custom_score": 0.225523,
+        "score_percentile": 0.821429,
+        "signal_threshold": 0.008603,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-18",
+        "close": 24812.050781,
+        "custom_score": 0.214077,
+        "score_percentile": 0.781746,
+        "signal_threshold": 0.008602,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-19",
+        "close": 24793.25,
+        "custom_score": 0.182935,
+        "score_percentile": 0.742063,
+        "signal_threshold": 0.0086,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-20",
+        "close": 25112.400391,
+        "custom_score": 0.201424,
+        "score_percentile": 0.769841,
+        "signal_threshold": 0.0086,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-23",
+        "close": 24971.900391,
+        "custom_score": 0.195571,
+        "score_percentile": 0.753968,
+        "signal_threshold": 0.008599,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-24",
+        "close": 25044.349609,
+        "custom_score": 0.210359,
+        "score_percentile": 0.77381,
+        "signal_threshold": 0.008599,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-25",
+        "close": 25244.75,
+        "custom_score": 0.21018,
+        "score_percentile": 0.769841,
+        "signal_threshold": 0.008598,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-26",
+        "close": 25549.0,
+        "custom_score": 0.237017,
+        "score_percentile": 0.861111,
+        "signal_threshold": 0.008598,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-27",
+        "close": 25637.800781,
+        "custom_score": 0.241902,
+        "score_percentile": 0.861111,
+        "signal_threshold": 0.008597,
+        "position": 1.0
+      },
+      {
+        "date": "2025-06-30",
+        "close": 25517.050781,
+        "custom_score": 0.224074,
+        "score_percentile": 0.805556,
+        "signal_threshold": 0.008597,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-01",
+        "close": 25541.800781,
+        "custom_score": 0.204988,
+        "score_percentile": 0.75,
+        "signal_threshold": 0.008597,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-02",
+        "close": 25453.400391,
+        "custom_score": 0.184428,
+        "score_percentile": 0.710317,
+        "signal_threshold": 0.008596,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-03",
+        "close": 25405.300781,
+        "custom_score": 0.179928,
+        "score_percentile": 0.698413,
+        "signal_threshold": 0.008596,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-04",
+        "close": 25461.0,
+        "custom_score": 0.196006,
+        "score_percentile": 0.730159,
+        "signal_threshold": 0.008596,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-07",
+        "close": 25461.300781,
+        "custom_score": 0.190893,
+        "score_percentile": 0.714286,
+        "signal_threshold": 0.008596,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-08",
+        "close": 25522.5,
+        "custom_score": 0.201246,
+        "score_percentile": 0.738095,
+        "signal_threshold": 0.008594,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-09",
+        "close": 25476.099609,
+        "custom_score": 0.167652,
+        "score_percentile": 0.674603,
+        "signal_threshold": 0.008593,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-10",
+        "close": 25355.25,
+        "custom_score": 0.155246,
+        "score_percentile": 0.666667,
+        "signal_threshold": 0.008592,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-11",
+        "close": 25149.849609,
+        "custom_score": 0.12685,
+        "score_percentile": 0.583333,
+        "signal_threshold": 0.008592,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-14",
+        "close": 25082.300781,
+        "custom_score": 0.11405,
+        "score_percentile": 0.563492,
+        "signal_threshold": 0.008592,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-15",
+        "close": 25195.800781,
+        "custom_score": 0.117116,
+        "score_percentile": 0.56746,
+        "signal_threshold": 0.008592,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-16",
+        "close": 25212.050781,
+        "custom_score": 0.108247,
+        "score_percentile": 0.555556,
+        "signal_threshold": 0.008591,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-17",
+        "close": 25111.449219,
+        "custom_score": 0.102024,
+        "score_percentile": 0.539683,
+        "signal_threshold": 0.008591,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-18",
+        "close": 24968.400391,
+        "custom_score": 0.087822,
+        "score_percentile": 0.519841,
+        "signal_threshold": 0.008589,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-21",
+        "close": 25090.699219,
+        "custom_score": 0.092938,
+        "score_percentile": 0.531746,
+        "signal_threshold": 0.008588,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-22",
+        "close": 25060.900391,
+        "custom_score": 0.089322,
+        "score_percentile": 0.52381,
+        "signal_threshold": 0.008588,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-23",
+        "close": 25219.900391,
+        "custom_score": 0.094821,
+        "score_percentile": 0.547619,
+        "signal_threshold": 0.008588,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-24",
+        "close": 25062.099609,
+        "custom_score": 0.080934,
+        "score_percentile": 0.515873,
+        "signal_threshold": 0.008586,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-25",
+        "close": 24837.0,
+        "custom_score": 0.07548,
+        "score_percentile": 0.515873,
+        "signal_threshold": 0.008584,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-28",
+        "close": 24680.900391,
+        "custom_score": 0.065092,
+        "score_percentile": 0.507937,
+        "signal_threshold": 0.008581,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-29",
+        "close": 24821.099609,
+        "custom_score": 0.065468,
+        "score_percentile": 0.511905,
+        "signal_threshold": 0.008579,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-30",
+        "close": 24855.050781,
+        "custom_score": 0.064677,
+        "score_percentile": 0.507937,
+        "signal_threshold": 0.008578,
+        "position": 1.0
+      },
+      {
+        "date": "2025-07-31",
+        "close": 24768.349609,
+        "custom_score": 0.053421,
+        "score_percentile": 0.496032,
+        "signal_threshold": 0.008578,
+        "position": 1.0
+      },
+      {
+        "date": "2025-08-01",
+        "close": 24565.349609,
+        "custom_score": 0.041241,
+        "score_percentile": 0.480159,
+        "signal_threshold": 0.008576,
+        "position": 1.0
+      },
+      {
+        "date": "2025-08-04",
+        "close": 24722.75,
+        "custom_score": 0.038592,
+        "score_percentile": 0.47619,
+        "signal_threshold": 0.008575,
+        "position": 1.0
+      },
+      {
+        "date": "2025-08-05",
+        "close": 24649.550781,
+        "custom_score": 0.029944,
+        "score_percentile": 0.468254,
+        "signal_threshold": 0.008575,
+        "position": 1.0
+      },
+      {
+        "date": "2025-08-06",
+        "close": 24574.199219,
+        "custom_score": 0.016761,
+        "score_percentile": 0.456349,
+        "signal_threshold": 0.008575,
+        "position": 1.0
+      },
+      {
+        "date": "2025-08-07",
+        "close": 24596.150391,
+        "custom_score": 0.014563,
+        "score_percentile": 0.456349,
+        "signal_threshold": 0.008574,
+        "position": 1.0
+      },
+      {
+        "date": "2025-08-08",
+        "close": 24363.300781,
+        "custom_score": 0.006083,
+        "score_percentile": 0.452381,
+        "signal_threshold": 0.008574,
+        "position": 1.0
+      },
+      {
+        "date": "2025-08-11",
+        "close": 24585.050781,
+        "custom_score": 0.00021,
+        "score_percentile": 0.448413,
+        "signal_threshold": 0.008573,
+        "position": 1.0
+      },
+      {
+        "date": "2025-08-12",
+        "close": 24487.400391,
+        "custom_score": -0.002622,
+        "score_percentile": 0.444444,
+        "signal_threshold": 0.008573,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-13",
+        "close": 24619.349609,
+        "custom_score": -0.004669,
+        "score_percentile": 0.444444,
+        "signal_threshold": 0.008573,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-14",
+        "close": 24631.300781,
+        "custom_score": -0.00634,
+        "score_percentile": 0.444444,
+        "signal_threshold": 0.008573,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-18",
+        "close": 24876.949219,
+        "custom_score": -0.008532,
+        "score_percentile": 0.444444,
+        "signal_threshold": 0.00857,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-19",
+        "close": 24980.650391,
+        "custom_score": -0.009355,
+        "score_percentile": 0.436508,
+        "signal_threshold": 0.008567,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-20",
+        "close": 25050.550781,
+        "custom_score": -0.011017,
+        "score_percentile": 0.436508,
+        "signal_threshold": 0.008564,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-21",
+        "close": 25083.75,
+        "custom_score": -0.011116,
+        "score_percentile": 0.436508,
+        "signal_threshold": 0.008561,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-22",
+        "close": 24870.099609,
+        "custom_score": -0.012899,
+        "score_percentile": 0.436508,
+        "signal_threshold": 0.00856,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-25",
+        "close": 24967.75,
+        "custom_score": -0.013938,
+        "score_percentile": 0.436508,
+        "signal_threshold": 0.008558,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-26",
+        "close": 24712.050781,
+        "custom_score": -0.019013,
+        "score_percentile": 0.428571,
+        "signal_threshold": 0.008556,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-28",
+        "close": 24500.900391,
+        "custom_score": -0.023357,
+        "score_percentile": 0.428571,
+        "signal_threshold": 0.008553,
+        "position": 0.0
+      },
+      {
+        "date": "2025-08-29",
+        "close": 24426.849609,
+        "custom_score": -0.03117,
+        "score_percentile": 0.416667,
+        "signal_threshold": 0.00855,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-01",
+        "close": 24625.050781,
+        "custom_score": -0.032633,
+        "score_percentile": 0.416667,
+        "signal_threshold": 0.008548,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-02",
+        "close": 24579.599609,
+        "custom_score": -0.037953,
+        "score_percentile": 0.40873,
+        "signal_threshold": 0.008547,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-03",
+        "close": 24715.050781,
+        "custom_score": -0.038008,
+        "score_percentile": 0.40873,
+        "signal_threshold": 0.008547,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-04",
+        "close": 24734.300781,
+        "custom_score": -0.040513,
+        "score_percentile": 0.404762,
+        "signal_threshold": 0.008545,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-05",
+        "close": 24741.0,
+        "custom_score": -0.037274,
+        "score_percentile": 0.420635,
+        "signal_threshold": 0.008544,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-08",
+        "close": 24773.150391,
+        "custom_score": -0.037412,
+        "score_percentile": 0.420635,
+        "signal_threshold": 0.008544,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-09",
+        "close": 24868.599609,
+        "custom_score": -0.037067,
+        "score_percentile": 0.428571,
+        "signal_threshold": 0.008544,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-10",
+        "close": 24973.099609,
+        "custom_score": -0.035994,
+        "score_percentile": 0.436508,
+        "signal_threshold": 0.008542,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-11",
+        "close": 25005.5,
+        "custom_score": -0.035953,
+        "score_percentile": 0.440476,
+        "signal_threshold": 0.008539,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-12",
+        "close": 25114.0,
+        "custom_score": -0.036309,
+        "score_percentile": 0.436508,
+        "signal_threshold": 0.008538,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-15",
+        "close": 25069.199219,
+        "custom_score": -0.039868,
+        "score_percentile": 0.40873,
+        "signal_threshold": 0.008536,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-16",
+        "close": 25239.099609,
+        "custom_score": -0.039047,
+        "score_percentile": 0.416667,
+        "signal_threshold": 0.008533,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-17",
+        "close": 25330.25,
+        "custom_score": -0.037891,
+        "score_percentile": 0.428571,
+        "signal_threshold": 0.00853,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-18",
+        "close": 25423.599609,
+        "custom_score": -0.032708,
+        "score_percentile": 0.464286,
+        "signal_threshold": 0.00853,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-19",
+        "close": 25327.050781,
+        "custom_score": -0.033895,
+        "score_percentile": 0.464286,
+        "signal_threshold": 0.00853,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-22",
+        "close": 25202.349609,
+        "custom_score": -0.036205,
+        "score_percentile": 0.452381,
+        "signal_threshold": 0.008529,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-23",
+        "close": 25169.5,
+        "custom_score": -0.037914,
+        "score_percentile": 0.428571,
+        "signal_threshold": 0.008529,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-24",
+        "close": 25056.900391,
+        "custom_score": -0.03574,
+        "score_percentile": 0.468254,
+        "signal_threshold": 0.008529,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-25",
+        "close": 24890.849609,
+        "custom_score": -0.032538,
+        "score_percentile": 0.488095,
+        "signal_threshold": 0.008528,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-26",
+        "close": 24654.699219,
+        "custom_score": -0.030223,
+        "score_percentile": 0.496032,
+        "signal_threshold": 0.008528,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-29",
+        "close": 24634.900391,
+        "custom_score": -0.028549,
+        "score_percentile": 0.503968,
+        "signal_threshold": 0.008528,
+        "position": 0.0
+      },
+      {
+        "date": "2025-09-30",
+        "close": 24611.099609,
+        "custom_score": -0.026657,
+        "score_percentile": 0.511905,
+        "signal_threshold": 0.008528,
+        "position": 0.0
+      },
+      {
+        "date": "2025-10-01",
+        "close": 24836.300781,
+        "custom_score": -0.021678,
+        "score_percentile": 0.52381,
+        "signal_threshold": 0.008528,
+        "position": 0.0
+      },
+      {
+        "date": "2025-10-03",
+        "close": 24894.25,
+        "custom_score": -0.016905,
+        "score_percentile": 0.535714,
+        "signal_threshold": 0.008528,
+        "position": 0.0
+      },
+      {
+        "date": "2025-10-06",
+        "close": 25077.650391,
+        "custom_score": -0.011217,
+        "score_percentile": 0.551587,
+        "signal_threshold": 0.008528,
+        "position": 0.0
+      },
+      {
+        "date": "2025-10-07",
+        "close": 25108.300781,
+        "custom_score": -0.006824,
+        "score_percentile": 0.579365,
+        "signal_threshold": 0.008527,
+        "position": 0.0
+      },
+      {
+        "date": "2025-10-08",
+        "close": 25046.150391,
+        "custom_score": -0.002501,
+        "score_percentile": 0.595238,
+        "signal_threshold": 0.008525,
+        "position": 0.0
+      },
+      {
+        "date": "2025-10-09",
+        "close": 25181.800781,
+        "custom_score": 0.003928,
+        "score_percentile": 0.611111,
+        "signal_threshold": 0.008525,
+        "position": 0.0
+      },
+      {
+        "date": "2025-10-10",
+        "close": 25285.349609,
+        "custom_score": 0.010707,
+        "score_percentile": 0.619048,
+        "signal_threshold": 0.008525,
+        "position": 0.0
+      },
+      {
+        "date": "2025-10-13",
+        "close": 25227.349609,
+        "custom_score": 0.01538,
+        "score_percentile": 0.630952,
+        "signal_threshold": 0.008525,
+        "position": 0.0
+      },
+      {
+        "date": "2025-10-14",
+        "close": 25145.5,
+        "custom_score": 0.017184,
+        "score_percentile": 0.638889,
+        "signal_threshold": 0.008524,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-15",
+        "close": 25323.550781,
+        "custom_score": 0.024614,
+        "score_percentile": 0.654762,
+        "signal_threshold": 0.008523,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-16",
+        "close": 25585.300781,
+        "custom_score": 0.03549,
+        "score_percentile": 0.670635,
+        "signal_threshold": 0.008521,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-17",
+        "close": 25709.849609,
+        "custom_score": 0.044152,
+        "score_percentile": 0.690476,
+        "signal_threshold": 0.008517,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-20",
+        "close": 25843.150391,
+        "custom_score": 0.052461,
+        "score_percentile": 0.702381,
+        "signal_threshold": 0.008512,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-21",
+        "close": 25868.599609,
+        "custom_score": 0.063996,
+        "score_percentile": 0.72619,
+        "signal_threshold": 0.008511,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-23",
+        "close": 25891.400391,
+        "custom_score": 0.073271,
+        "score_percentile": 0.746032,
+        "signal_threshold": 0.00851,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-24",
+        "close": 25795.150391,
+        "custom_score": 0.076682,
+        "score_percentile": 0.757937,
+        "signal_threshold": 0.00851,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-27",
+        "close": 25966.050781,
+        "custom_score": 0.08558,
+        "score_percentile": 0.765873,
+        "signal_threshold": 0.00851,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-28",
+        "close": 25936.199219,
+        "custom_score": 0.084779,
+        "score_percentile": 0.765873,
+        "signal_threshold": 0.008508,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-29",
+        "close": 26053.900391,
+        "custom_score": 0.098271,
+        "score_percentile": 0.793651,
+        "signal_threshold": 0.008506,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-30",
+        "close": 25877.849609,
+        "custom_score": 0.095659,
+        "score_percentile": 0.789683,
+        "signal_threshold": 0.008506,
+        "position": 1.0
+      },
+      {
+        "date": "2025-10-31",
+        "close": 25722.099609,
+        "custom_score": 0.099865,
+        "score_percentile": 0.793651,
+        "signal_threshold": 0.008506,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-03",
+        "close": 25763.349609,
+        "custom_score": 0.102508,
+        "score_percentile": 0.797619,
+        "signal_threshold": 0.008506,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-04",
+        "close": 25597.650391,
+        "custom_score": 0.103077,
+        "score_percentile": 0.797619,
+        "signal_threshold": 0.008506,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-06",
+        "close": 25509.699219,
+        "custom_score": 0.103202,
+        "score_percentile": 0.797619,
+        "signal_threshold": 0.008503,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-07",
+        "close": 25492.300781,
+        "custom_score": 0.092414,
+        "score_percentile": 0.757937,
+        "signal_threshold": 0.008501,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-10",
+        "close": 25574.349609,
+        "custom_score": 0.101252,
+        "score_percentile": 0.781746,
+        "signal_threshold": 0.008501,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-11",
+        "close": 25694.949219,
+        "custom_score": 0.111093,
+        "score_percentile": 0.805556,
+        "signal_threshold": 0.0085,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-12",
+        "close": 25875.800781,
+        "custom_score": 0.12051,
+        "score_percentile": 0.81746,
+        "signal_threshold": 0.0085,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-13",
+        "close": 25879.150391,
+        "custom_score": 0.111167,
+        "score_percentile": 0.801587,
+        "signal_threshold": 0.008499,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-14",
+        "close": 25910.050781,
+        "custom_score": 0.110477,
+        "score_percentile": 0.793651,
+        "signal_threshold": 0.008498,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-17",
+        "close": 26013.449219,
+        "custom_score": 0.111598,
+        "score_percentile": 0.801587,
+        "signal_threshold": 0.008497,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-18",
+        "close": 25910.050781,
+        "custom_score": 0.112252,
+        "score_percentile": 0.801587,
+        "signal_threshold": 0.008497,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-19",
+        "close": 26052.650391,
+        "custom_score": 0.11557,
+        "score_percentile": 0.809524,
+        "signal_threshold": 0.008497,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-20",
+        "close": 26192.150391,
+        "custom_score": 0.12034,
+        "score_percentile": 0.813492,
+        "signal_threshold": 0.008497,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-21",
+        "close": 26068.150391,
+        "custom_score": 0.12525,
+        "score_percentile": 0.821429,
+        "signal_threshold": 0.008496,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-24",
+        "close": 25959.5,
+        "custom_score": 0.117328,
+        "score_percentile": 0.805556,
+        "signal_threshold": 0.008496,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-25",
+        "close": 25884.800781,
+        "custom_score": 0.106074,
+        "score_percentile": 0.757937,
+        "signal_threshold": 0.008496,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-26",
+        "close": 26205.300781,
+        "custom_score": 0.1248,
+        "score_percentile": 0.81746,
+        "signal_threshold": 0.008496,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-27",
+        "close": 26215.550781,
+        "custom_score": 0.12489,
+        "score_percentile": 0.81746,
+        "signal_threshold": 0.008496,
+        "position": 1.0
+      },
+      {
+        "date": "2025-11-28",
+        "close": 26202.949219,
+        "custom_score": 0.123423,
+        "score_percentile": 0.809524,
+        "signal_threshold": 0.008493,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-01",
+        "close": 26175.75,
+        "custom_score": 0.108996,
+        "score_percentile": 0.753968,
+        "signal_threshold": 0.008491,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-02",
+        "close": 26032.199219,
+        "custom_score": 0.107849,
+        "score_percentile": 0.746032,
+        "signal_threshold": 0.008487,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-03",
+        "close": 25986.0,
+        "custom_score": 0.104711,
+        "score_percentile": 0.734127,
+        "signal_threshold": 0.008483,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-04",
+        "close": 26033.75,
+        "custom_score": 0.11363,
+        "score_percentile": 0.777778,
+        "signal_threshold": 0.008481,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-05",
+        "close": 26186.449219,
+        "custom_score": 0.124115,
+        "score_percentile": 0.809524,
+        "signal_threshold": 0.008478,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-08",
+        "close": 25960.550781,
+        "custom_score": 0.12272,
+        "score_percentile": 0.797619,
+        "signal_threshold": 0.008478,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-09",
+        "close": 25839.650391,
+        "custom_score": 0.108112,
+        "score_percentile": 0.734127,
+        "signal_threshold": 0.008478,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-10",
+        "close": 25758.0,
+        "custom_score": 0.093954,
+        "score_percentile": 0.674603,
+        "signal_threshold": 0.008477,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-11",
+        "close": 25898.550781,
+        "custom_score": 0.101961,
+        "score_percentile": 0.698413,
+        "signal_threshold": 0.008477,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-12",
+        "close": 26046.949219,
+        "custom_score": 0.110628,
+        "score_percentile": 0.746032,
+        "signal_threshold": 0.008476,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-15",
+        "close": 26027.300781,
+        "custom_score": 0.109456,
+        "score_percentile": 0.738095,
+        "signal_threshold": 0.008476,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-16",
+        "close": 25860.099609,
+        "custom_score": 0.0979,
+        "score_percentile": 0.674603,
+        "signal_threshold": 0.008476,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-17",
+        "close": 25818.550781,
+        "custom_score": 0.086758,
+        "score_percentile": 0.634921,
+        "signal_threshold": 0.008475,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-18",
+        "close": 25815.550781,
+        "custom_score": 0.085356,
+        "score_percentile": 0.626984,
+        "signal_threshold": 0.008474,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-19",
+        "close": 25966.400391,
+        "custom_score": 0.09537,
+        "score_percentile": 0.666667,
+        "signal_threshold": 0.008473,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-22",
+        "close": 26172.400391,
+        "custom_score": 0.106537,
+        "score_percentile": 0.718254,
+        "signal_threshold": 0.008472,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-23",
+        "close": 26177.150391,
+        "custom_score": 0.106235,
+        "score_percentile": 0.710317,
+        "signal_threshold": 0.00847,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-24",
+        "close": 26142.099609,
+        "custom_score": 0.096016,
+        "score_percentile": 0.662698,
+        "signal_threshold": 0.00847,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-26",
+        "close": 26042.300781,
+        "custom_score": 0.084664,
+        "score_percentile": 0.603175,
+        "signal_threshold": 0.008469,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-29",
+        "close": 25942.099609,
+        "custom_score": 0.079957,
+        "score_percentile": 0.595238,
+        "signal_threshold": 0.008469,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-30",
+        "close": 25938.849609,
+        "custom_score": 0.073656,
+        "score_percentile": 0.579365,
+        "signal_threshold": 0.008469,
+        "position": 1.0
+      },
+      {
+        "date": "2025-12-31",
+        "close": 26129.599609,
+        "custom_score": 0.076276,
+        "score_percentile": 0.587302,
+        "signal_threshold": 0.008467,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-01",
+        "close": 26146.550781,
+        "custom_score": 0.076347,
+        "score_percentile": 0.587302,
+        "signal_threshold": 0.008464,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-02",
+        "close": 26328.550781,
+        "custom_score": 0.078894,
+        "score_percentile": 0.59127,
+        "signal_threshold": 0.008463,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-05",
+        "close": 26250.300781,
+        "custom_score": 0.068283,
+        "score_percentile": 0.559524,
+        "signal_threshold": 0.008462,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-06",
+        "close": 26178.699219,
+        "custom_score": 0.059018,
+        "score_percentile": 0.535714,
+        "signal_threshold": 0.008462,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-07",
+        "close": 26140.75,
+        "custom_score": 0.050107,
+        "score_percentile": 0.519841,
+        "signal_threshold": 0.008462,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-08",
+        "close": 25876.849609,
+        "custom_score": 0.046966,
+        "score_percentile": 0.515873,
+        "signal_threshold": 0.008462,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-09",
+        "close": 25683.300781,
+        "custom_score": 0.040435,
+        "score_percentile": 0.5,
+        "signal_threshold": 0.008461,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-12",
+        "close": 25790.25,
+        "custom_score": 0.038668,
+        "score_percentile": 0.496032,
+        "signal_threshold": 0.008461,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-13",
+        "close": 25732.300781,
+        "custom_score": 0.031827,
+        "score_percentile": 0.484127,
+        "signal_threshold": 0.008461,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-14",
+        "close": 25665.599609,
+        "custom_score": 0.021627,
+        "score_percentile": 0.464286,
+        "signal_threshold": 0.008461,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-16",
+        "close": 25694.349609,
+        "custom_score": 0.017164,
+        "score_percentile": 0.456349,
+        "signal_threshold": 0.00846,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-19",
+        "close": 25585.5,
+        "custom_score": 0.011783,
+        "score_percentile": 0.440476,
+        "signal_threshold": 0.00846,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-20",
+        "close": 25232.5,
+        "custom_score": 0.00425,
+        "score_percentile": 0.424603,
+        "signal_threshold": 0.008459,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-21",
+        "close": 25157.5,
+        "custom_score": -0.001475,
+        "score_percentile": 0.40873,
+        "signal_threshold": 0.008459,
+        "position": 1.0
+      },
+      {
+        "date": "2026-01-22",
+        "close": 25289.900391,
+        "custom_score": -0.005392,
+        "score_percentile": 0.392857,
+        "signal_threshold": 0.008458,
+        "position": 0.0
+      },
+      {
+        "date": "2026-01-23",
+        "close": 25048.650391,
+        "custom_score": -0.01151,
+        "score_percentile": 0.357143,
+        "signal_threshold": 0.008456,
+        "position": 0.0
+      },
+      {
+        "date": "2026-01-27",
+        "close": 25175.400391,
+        "custom_score": -0.01656,
+        "score_percentile": 0.345238,
+        "signal_threshold": 0.008454,
+        "position": 0.0
+      },
+      {
+        "date": "2026-01-28",
+        "close": 25342.75,
+        "custom_score": -0.019307,
+        "score_percentile": 0.329365,
+        "signal_threshold": 0.00845,
+        "position": 0.0
+      },
+      {
+        "date": "2026-01-29",
+        "close": 25418.900391,
+        "custom_score": -0.019444,
+        "score_percentile": 0.325397,
+        "signal_threshold": 0.008447,
+        "position": 0.0
+      },
+      {
+        "date": "2026-01-30",
+        "close": 25320.650391,
+        "custom_score": -0.023601,
+        "score_percentile": 0.309524,
+        "signal_threshold": 0.008447,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-02",
+        "close": 25088.400391,
+        "custom_score": -0.030719,
+        "score_percentile": 0.289683,
+        "signal_threshold": 0.008446,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-03",
+        "close": 25727.550781,
+        "custom_score": -0.032521,
+        "score_percentile": 0.281746,
+        "signal_threshold": 0.008445,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-04",
+        "close": 25776.0,
+        "custom_score": -0.030379,
+        "score_percentile": 0.289683,
+        "signal_threshold": 0.008446,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-05",
+        "close": 25642.800781,
+        "custom_score": -0.032925,
+        "score_percentile": 0.261905,
+        "signal_threshold": 0.008447,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-06",
+        "close": 25693.699219,
+        "custom_score": -0.035658,
+        "score_percentile": 0.25,
+        "signal_threshold": 0.008447,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-09",
+        "close": 25867.300781,
+        "custom_score": -0.037526,
+        "score_percentile": 0.214286,
+        "signal_threshold": 0.00845,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-10",
+        "close": 25935.150391,
+        "custom_score": -0.034718,
+        "score_percentile": 0.253968,
+        "signal_threshold": 0.008454,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-11",
+        "close": 25953.849609,
+        "custom_score": -0.034962,
+        "score_percentile": 0.246032,
+        "signal_threshold": 0.00845,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-12",
+        "close": 25807.199219,
+        "custom_score": -0.038978,
+        "score_percentile": 0.186508,
+        "signal_threshold": 0.008447,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-13",
+        "close": 25471.099609,
+        "custom_score": -0.045197,
+        "score_percentile": 0.154762,
+        "signal_threshold": 0.008447,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-16",
+        "close": 25682.75,
+        "custom_score": -0.045833,
+        "score_percentile": 0.150794,
+        "signal_threshold": 0.008446,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-17",
+        "close": 25725.400391,
+        "custom_score": -0.041316,
+        "score_percentile": 0.15873,
+        "signal_threshold": 0.008445,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-18",
+        "close": 25819.349609,
+        "custom_score": -0.036883,
+        "score_percentile": 0.218254,
+        "signal_threshold": 0.008443,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-19",
+        "close": 25454.349609,
+        "custom_score": -0.042059,
+        "score_percentile": 0.150794,
+        "signal_threshold": 0.008443,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-20",
+        "close": 25571.25,
+        "custom_score": -0.041398,
+        "score_percentile": 0.150794,
+        "signal_threshold": 0.008443,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-23",
+        "close": 25713.0,
+        "custom_score": -0.040544,
+        "score_percentile": 0.162698,
+        "signal_threshold": 0.008443,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-24",
+        "close": 25424.650391,
+        "custom_score": -0.041943,
+        "score_percentile": 0.142857,
+        "signal_threshold": 0.008442,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-25",
+        "close": 25482.5,
+        "custom_score": -0.043215,
+        "score_percentile": 0.134921,
+        "signal_threshold": 0.008442,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-26",
+        "close": 25496.550781,
+        "custom_score": -0.042528,
+        "score_percentile": 0.134921,
+        "signal_threshold": 0.008441,
+        "position": 0.0
+      },
+      {
+        "date": "2026-02-27",
+        "close": 25178.650391,
+        "custom_score": -0.043824,
+        "score_percentile": 0.126984,
+        "signal_threshold": 0.008441,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-02",
+        "close": 24865.699219,
+        "custom_score": -0.051137,
+        "score_percentile": 0.107143,
+        "signal_threshold": 0.00844,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-04",
+        "close": 24480.5,
+        "custom_score": -0.061527,
+        "score_percentile": 0.09127,
+        "signal_threshold": 0.00844,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-05",
+        "close": 24765.900391,
+        "custom_score": -0.060448,
+        "score_percentile": 0.095238,
+        "signal_threshold": 0.00844,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-06",
+        "close": 24450.449219,
+        "custom_score": -0.066218,
+        "score_percentile": 0.075397,
+        "signal_threshold": 0.008441,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-09",
+        "close": 24028.050781,
+        "custom_score": -0.073939,
+        "score_percentile": 0.063492,
+        "signal_threshold": 0.008441,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-10",
+        "close": 24261.599609,
+        "custom_score": -0.078892,
+        "score_percentile": 0.051587,
+        "signal_threshold": 0.008442,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-11",
+        "close": 23866.849609,
+        "custom_score": -0.086864,
+        "score_percentile": 0.043651,
+        "signal_threshold": 0.008442,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-12",
+        "close": 23639.150391,
+        "custom_score": -0.095832,
+        "score_percentile": 0.035714,
+        "signal_threshold": 0.008443,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-13",
+        "close": 23151.099609,
+        "custom_score": -0.117652,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008443,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-16",
+        "close": 23408.800781,
+        "custom_score": -0.116614,
+        "score_percentile": 0.003968,
+        "signal_threshold": 0.008445,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-17",
+        "close": 23581.150391,
+        "custom_score": -0.11141,
+        "score_percentile": 0.007937,
+        "signal_threshold": 0.008446,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-18",
+        "close": 23777.800781,
+        "custom_score": -0.103773,
+        "score_percentile": 0.019841,
+        "signal_threshold": 0.008447,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-19",
+        "close": 23002.150391,
+        "custom_score": -0.125813,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008447,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-20",
+        "close": 23114.5,
+        "custom_score": -0.132733,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.00845,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-23",
+        "close": 22512.650391,
+        "custom_score": -0.157214,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008454,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-24",
+        "close": 22912.400391,
+        "custom_score": -0.149332,
+        "score_percentile": 0.003968,
+        "signal_threshold": 0.008456,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-25",
+        "close": 23306.449219,
+        "custom_score": -0.153138,
+        "score_percentile": 0.003968,
+        "signal_threshold": 0.008458,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-27",
+        "close": 22819.599609,
+        "custom_score": -0.158124,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008459,
+        "position": 0.0
+      },
+      {
+        "date": "2026-03-30",
+        "close": 22331.400391,
+        "custom_score": -0.181631,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008459,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-01",
+        "close": 22679.400391,
+        "custom_score": -0.187226,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.00846,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-02",
+        "close": 22713.099609,
+        "custom_score": -0.174074,
+        "score_percentile": 0.007937,
+        "signal_threshold": 0.00846,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-06",
+        "close": 22968.25,
+        "custom_score": -0.158251,
+        "score_percentile": 0.011905,
+        "signal_threshold": 0.008461,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-07",
+        "close": 23123.650391,
+        "custom_score": -0.159022,
+        "score_percentile": 0.011905,
+        "signal_threshold": 0.008461,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-08",
+        "close": 23997.349609,
+        "custom_score": -0.160866,
+        "score_percentile": 0.011905,
+        "signal_threshold": 0.008461,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-09",
+        "close": 23775.099609,
+        "custom_score": -0.177445,
+        "score_percentile": 0.007937,
+        "signal_threshold": 0.008461,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-10",
+        "close": 24050.599609,
+        "custom_score": -0.174341,
+        "score_percentile": 0.011905,
+        "signal_threshold": 0.008462,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-13",
+        "close": 23842.650391,
+        "custom_score": -0.18992,
+        "score_percentile": 0.0,
+        "signal_threshold": 0.008462,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-15",
+        "close": 24231.300781,
+        "custom_score": -0.1684,
+        "score_percentile": 0.02381,
+        "signal_threshold": 0.008462,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-16",
+        "close": 24196.75,
+        "custom_score": -0.165067,
+        "score_percentile": 0.027778,
+        "signal_threshold": 0.008462,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-17",
+        "close": 24353.550781,
+        "custom_score": -0.144728,
+        "score_percentile": 0.059524,
+        "signal_threshold": 0.008463,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-20",
+        "close": 24364.849609,
+        "custom_score": -0.141098,
+        "score_percentile": 0.063492,
+        "signal_threshold": 0.008464,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-21",
+        "close": 24576.599609,
+        "custom_score": -0.13694,
+        "score_percentile": 0.06746,
+        "signal_threshold": 0.008467,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-22",
+        "close": 24378.099609,
+        "custom_score": -0.14938,
+        "score_percentile": 0.055556,
+        "signal_threshold": 0.008469,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-23",
+        "close": 24173.050781,
+        "custom_score": -0.161499,
+        "score_percentile": 0.031746,
+        "signal_threshold": 0.008469,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-24",
+        "close": 23897.949219,
+        "custom_score": -0.174604,
+        "score_percentile": 0.015873,
+        "signal_threshold": 0.008469,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-27",
+        "close": 24092.699219,
+        "custom_score": -0.15761,
+        "score_percentile": 0.055556,
+        "signal_threshold": 0.00847,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-28",
+        "close": 23995.699219,
+        "custom_score": -0.156115,
+        "score_percentile": 0.063492,
+        "signal_threshold": 0.00847,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-29",
+        "close": 24177.650391,
+        "custom_score": -0.138706,
+        "score_percentile": 0.087302,
+        "signal_threshold": 0.008472,
+        "position": 0.0
+      },
+      {
+        "date": "2026-04-30",
+        "close": 23997.550781,
+        "custom_score": -0.152161,
+        "score_percentile": 0.071429,
+        "signal_threshold": 0.008473,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-04",
+        "close": 24119.300781,
+        "custom_score": -0.135351,
+        "score_percentile": 0.099206,
+        "signal_threshold": 0.008474,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-05",
+        "close": 24032.800781,
+        "custom_score": -0.146627,
+        "score_percentile": 0.083333,
+        "signal_threshold": 0.008475,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-06",
+        "close": 24330.949219,
+        "custom_score": -0.12821,
+        "score_percentile": 0.111111,
+        "signal_threshold": 0.008476,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-07",
+        "close": 24326.650391,
+        "custom_score": -0.12402,
+        "score_percentile": 0.119048,
+        "signal_threshold": 0.008476,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-08",
+        "close": 24176.150391,
+        "custom_score": -0.121446,
+        "score_percentile": 0.123016,
+        "signal_threshold": 0.008476,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-11",
+        "close": 23815.849609,
+        "custom_score": -0.131018,
+        "score_percentile": 0.111111,
+        "signal_threshold": 0.008477,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-12",
+        "close": 23379.550781,
+        "custom_score": -0.141446,
+        "score_percentile": 0.09127,
+        "signal_threshold": 0.008477,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-13",
+        "close": 23412.599609,
+        "custom_score": -0.126427,
+        "score_percentile": 0.123016,
+        "signal_threshold": 0.008478,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-14",
+        "close": 23689.599609,
+        "custom_score": -0.110781,
+        "score_percentile": 0.150794,
+        "signal_threshold": 0.008478,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-15",
+        "close": 23643.5,
+        "custom_score": -0.105546,
+        "score_percentile": 0.154762,
+        "signal_threshold": 0.008478,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-18",
+        "close": 23649.949219,
+        "custom_score": -0.099598,
+        "score_percentile": 0.162698,
+        "signal_threshold": 0.008481,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-19",
+        "close": 23618.0,
+        "custom_score": -0.1029,
+        "score_percentile": 0.162698,
+        "signal_threshold": 0.008483,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-20",
+        "close": 23659.0,
+        "custom_score": -0.086962,
+        "score_percentile": 0.174603,
+        "signal_threshold": 0.008487,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-21",
+        "close": 23654.699219,
+        "custom_score": -0.081789,
+        "score_percentile": 0.18254,
+        "signal_threshold": 0.008491,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-22",
+        "close": 23719.300781,
+        "custom_score": -0.067254,
+        "score_percentile": 0.194444,
+        "signal_threshold": 0.008493,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-25",
+        "close": 24031.699219,
+        "custom_score": -0.059369,
+        "score_percentile": 0.210317,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-26",
+        "close": 23913.699219,
+        "custom_score": -0.056232,
+        "score_percentile": 0.214286,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-27",
+        "close": 23907.150391,
+        "custom_score": -0.047712,
+        "score_percentile": 0.222222,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-05-29",
+        "close": 23547.75,
+        "custom_score": -0.044281,
+        "score_percentile": 0.234127,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-06-01",
+        "close": 23382.599609,
+        "custom_score": -0.035414,
+        "score_percentile": 0.345238,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-06-02",
+        "close": 23483.550781,
+        "custom_score": -0.027,
+        "score_percentile": 0.400794,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-06-03",
+        "close": 23405.599609,
+        "custom_score": -0.018063,
+        "score_percentile": 0.43254,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-06-04",
+        "close": 23416.550781,
+        "custom_score": -0.007453,
+        "score_percentile": 0.47619,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-06-05",
+        "close": 23366.699219,
+        "custom_score": -0.000254,
+        "score_percentile": 0.507937,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-06-08",
+        "close": 23123.0,
+        "custom_score": 0.004418,
+        "score_percentile": 0.52381,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-06-09",
+        "close": 23242.099609,
+        "custom_score": 0.007294,
+        "score_percentile": 0.531746,
+        "signal_threshold": 0.008496,
+        "position": 0.0
+      },
+      {
+        "date": "2026-06-10",
+        "close": 23214.949219,
+        "custom_score": 0.0118,
+        "score_percentile": 0.543651,
+        "signal_threshold": 0.008493,
+        "position": 0.0
+      },
+      {
+        "date": "2026-06-11",
+        "close": 23161.599609,
+        "custom_score": 0.012998,
+        "score_percentile": 0.547619,
+        "signal_threshold": 0.008491,
+        "position": 0.0
+      },
+      {
+        "date": "2026-06-12",
+        "close": 23622.900391,
+        "custom_score": 0.017454,
+        "score_percentile": 0.571429,
+        "signal_threshold": 0.008487,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-15",
+        "close": 23853.900391,
+        "custom_score": 0.026839,
+        "score_percentile": 0.583333,
+        "signal_threshold": 0.008491,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-16",
+        "close": 23989.150391,
+        "custom_score": 0.032377,
+        "score_percentile": 0.595238,
+        "signal_threshold": 0.008493,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-17",
+        "close": 24085.699219,
+        "custom_score": 0.036601,
+        "score_percentile": 0.603175,
+        "signal_threshold": 0.008496,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-18",
+        "close": 24168.0,
+        "custom_score": 0.036735,
+        "score_percentile": 0.607143,
+        "signal_threshold": 0.008493,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-19",
+        "close": 24013.099609,
+        "custom_score": 0.034603,
+        "score_percentile": 0.599206,
+        "signal_threshold": 0.008491,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-22",
+        "close": 24102.900391,
+        "custom_score": 0.037537,
+        "score_percentile": 0.615079,
+        "signal_threshold": 0.008487,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-23",
+        "close": 23824.099609,
+        "custom_score": 0.039827,
+        "score_percentile": 0.626984,
+        "signal_threshold": 0.008483,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-24",
+        "close": 24021.650391,
+        "custom_score": 0.036822,
+        "score_percentile": 0.615079,
+        "signal_threshold": 0.008481,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-25",
+        "close": 24056.0,
+        "custom_score": 0.037912,
+        "score_percentile": 0.623016,
+        "signal_threshold": 0.008478,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-29",
+        "close": 23946.25,
+        "custom_score": 0.026234,
+        "score_percentile": 0.583333,
+        "signal_threshold": 0.008478,
+        "position": 1.0
+      },
+      {
+        "date": "2026-06-30",
+        "close": 23865.75,
+        "custom_score": 0.018455,
+        "score_percentile": 0.575397,
+        "signal_threshold": 0.008478,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-01",
+        "close": 24005.849609,
+        "custom_score": 0.018656,
+        "score_percentile": 0.579365,
+        "signal_threshold": 0.008477,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-02",
+        "close": 24175.699219,
+        "custom_score": 0.015212,
+        "score_percentile": 0.555556,
+        "signal_threshold": 0.008477,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-03",
+        "close": 24270.849609,
+        "custom_score": 0.005816,
+        "score_percentile": 0.527778,
+        "signal_threshold": 0.008476,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-06",
+        "close": 24430.349609,
+        "custom_score": 0.000679,
+        "score_percentile": 0.515873,
+        "signal_threshold": 0.008476,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-07",
+        "close": 24398.699219,
+        "custom_score": -0.004313,
+        "score_percentile": 0.496032,
+        "signal_threshold": 0.008476,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-08",
+        "close": 23882.050781,
+        "custom_score": -0.011377,
+        "score_percentile": 0.456349,
+        "signal_threshold": 0.008475,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-09",
+        "close": 23962.800781,
+        "custom_score": -0.0152,
+        "score_percentile": 0.444444,
+        "signal_threshold": 0.008476,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-10",
+        "close": 24206.900391,
+        "custom_score": -0.012291,
+        "score_percentile": 0.456349,
+        "signal_threshold": 0.008476,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-13",
+        "close": 24211.0,
+        "custom_score": -0.009902,
+        "score_percentile": 0.480159,
+        "signal_threshold": 0.008476,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-14",
+        "close": 24052.050781,
+        "custom_score": -0.008825,
+        "score_percentile": 0.488095,
+        "signal_threshold": 0.008477,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-15",
+        "close": 24078.5,
+        "custom_score": -0.007995,
+        "score_percentile": 0.496032,
+        "signal_threshold": 0.008476,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-16",
+        "close": 24072.75,
+        "custom_score": -0.004879,
+        "score_percentile": 0.515873,
+        "signal_threshold": 0.008476,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-17",
+        "close": 24334.300781,
+        "custom_score": 0.000876,
+        "score_percentile": 0.551587,
+        "signal_threshold": 0.008476,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-20",
+        "close": 24238.5,
+        "custom_score": 0.006739,
+        "score_percentile": 0.575397,
+        "signal_threshold": 0.008475,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-21",
+        "close": 24187.699219,
+        "custom_score": 0.01243,
+        "score_percentile": 0.595238,
+        "signal_threshold": 0.008474,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-22",
+        "close": 23996.25,
+        "custom_score": 0.018362,
+        "score_percentile": 0.630952,
+        "signal_threshold": 0.008473,
+        "position": 0.0
+      },
+      {
+        "date": "2026-07-23",
+        "close": 23869.599609,
+        "custom_score": 0.02197,
+        "score_percentile": 0.646825,
+        "signal_threshold": 0.008472,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-24",
+        "close": 23767.449219,
+        "custom_score": 0.023349,
+        "score_percentile": 0.650794,
+        "signal_threshold": 0.00847,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-27",
+        "close": 23995.949219,
+        "custom_score": 0.026843,
+        "score_percentile": 0.666667,
+        "signal_threshold": 0.00847,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-28",
+        "close": 23985.349609,
+        "custom_score": 0.029564,
+        "score_percentile": 0.670635,
+        "signal_threshold": 0.008469,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-29",
+        "close": 24250.199219,
+        "custom_score": 0.033744,
+        "score_percentile": 0.686508,
+        "signal_threshold": 0.008469,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-30",
+        "close": 24317.150391,
+        "custom_score": 0.043468,
+        "score_percentile": 0.738095,
+        "signal_threshold": 0.008469,
+        "position": 1.0
+      },
+      {
+        "date": "2026-07-31",
+        "close": 24383.599609,
+        "custom_score": 0.049047,
+        "score_percentile": 0.75,
+        "signal_threshold": 0.008467,
+        "position": 1.0
+      },
+      {
+        "date": "2026-08-03",
+        "close": 24774.300781,
+        "custom_score": 0.059484,
+        "score_percentile": 0.769841,
+        "signal_threshold": 0.008464,
+        "position": 1.0
+      },
+      {
+        "date": "2026-08-04",
+        "close": 24614.900391,
+        "custom_score": 0.06178,
+        "score_percentile": 0.77381,
+        "signal_threshold": 0.008463,
+        "position": 1.0
+      },
+      {
+        "date": "2026-08-05",
+        "close": 24624.650391,
+        "custom_score": 0.06779,
+        "score_percentile": 0.793651,
+        "signal_threshold": 0.008462,
+        "position": 1.0
+      },
+      {
+        "date": "2026-08-06",
+        "close": 24636.0,
+        "custom_score": 0.069713,
+        "score_percentile": 0.801587,
+        "signal_threshold": 0.008462,
+        "position": 1.0
+      },
+      {
+        "date": "2026-08-07",
+        "close": 24570.650391,
+        "custom_score": 0.076216,
+        "score_percentile": 0.809524,
+        "signal_threshold": 0.008462,
+        "position": 1.0
+      },
+      {
+        "date": "2026-08-10",
+        "close": 24600.300781,
+        "custom_score": 0.088304,
+        "score_percentile": 0.849206,
+        "signal_threshold": 0.008462,
+        "position": 1.0
+      }
+    ]
+  },
   "yearly_returns": [
     {
       "year": 2012,
@@ -11969,13 +16037,13 @@
     },
     {
       "year": 2026,
-      "strategy": 0.035697,
-      "benchmark": -0.059662,
-      "gross_strategy": 0.039846,
-      "time_in_market": 0.285714,
+      "strategy": 0.036947,
+      "benchmark": -0.058527,
+      "gross_strategy": 0.041101,
+      "time_in_market": 0.290541,
       "switches": 4,
       "cost_debit_sum": 0.004,
-      "long_day_market_sum": 0.04009,
+      "long_day_market_sum": 0.041297,
       "cash_day_market_sum": -0.09426,
       "best_missed_day": {
         "date": "2026-04-08",
@@ -12000,149 +16068,149 @@
         },
         {
           "quarter": 3,
-          "strategy": 0.046072,
-          "benchmark": 0.029536,
-          "time_in_market": 0.571429
+          "strategy": 0.047335,
+          "benchmark": 0.030778,
+          "time_in_market": 0.586207
         }
       ]
     }
   ],
   "sensitivity": [
     {
-      "threshold": 0.00671813,
+      "threshold": 0.00671839,
       "threshold_method": "expanding_daily_sd_percentile",
       "threshold_quantile": 0.25,
-      "cagr": 0.0778996,
-      "annualized_volatility": 0.10821206,
-      "sharpe_zero_cash": 0.76545081,
-      "sortino_zero_cash": 1.09852026,
-      "annualized_downside_deviation": 0.07540235,
+      "cagr": 0.07794407,
+      "annualized_volatility": 0.1081969,
+      "sharpe_zero_cash": 0.76614053,
+      "sortino_zero_cash": 1.09951266,
+      "annualized_downside_deviation": 0.07539161,
       "max_drawdown": -0.18818764,
-      "total_return": 1.92089494,
-      "market_beta": 0.45394926,
-      "benchmark_cagr": 0.1147927,
-      "benchmark_annualized_volatility": 0.16048756,
-      "benchmark_sharpe_zero_cash": 0.77550909,
-      "benchmark_sortino_zero_cash": 1.08496572,
-      "benchmark_annualized_downside_deviation": 0.1147129,
+      "total_return": 1.9244197,
+      "market_beta": 0.45395036,
+      "benchmark_cagr": 0.11481714,
+      "benchmark_annualized_volatility": 0.16046481,
+      "benchmark_sharpe_zero_cash": 0.77593789,
+      "benchmark_sortino_zero_cash": 1.08556635,
+      "benchmark_annualized_downside_deviation": 0.11469656,
       "benchmark_max_drawdown": -0.38439852,
-      "benchmark_total_return": 3.72457984,
-      "time_in_market": 0.66296296,
+      "benchmark_total_return": 3.73028118,
+      "time_in_market": 0.66305896,
       "entries": 24,
       "exits": 23
     },
     {
-      "threshold": 0.00772769,
+      "threshold": 0.00772754,
       "threshold_method": "expanding_daily_sd_percentile",
       "threshold_quantile": 0.4,
-      "cagr": 0.07877774,
-      "annualized_volatility": 0.10809994,
-      "sharpe_zero_cash": 0.77386358,
-      "sortino_zero_cash": 1.11057072,
-      "annualized_downside_deviation": 0.07532578,
+      "cagr": 0.07882174,
+      "annualized_volatility": 0.10808479,
+      "sharpe_zero_cash": 0.77455292,
+      "sortino_zero_cash": 1.11156256,
+      "annualized_downside_deviation": 0.07531505,
       "max_drawdown": -0.18818764,
-      "total_return": 1.95508166,
-      "market_beta": 0.45301976,
-      "benchmark_cagr": 0.1147927,
-      "benchmark_annualized_volatility": 0.16048756,
-      "benchmark_sharpe_zero_cash": 0.77550909,
-      "benchmark_sortino_zero_cash": 1.08496572,
-      "benchmark_annualized_downside_deviation": 0.1147129,
+      "total_return": 1.95864768,
+      "market_beta": 0.45302086,
+      "benchmark_cagr": 0.11481714,
+      "benchmark_annualized_volatility": 0.16046481,
+      "benchmark_sharpe_zero_cash": 0.77593789,
+      "benchmark_sortino_zero_cash": 1.08556635,
+      "benchmark_annualized_downside_deviation": 0.11469656,
       "benchmark_max_drawdown": -0.38439852,
-      "benchmark_total_return": 3.72457984,
-      "time_in_market": 0.66039886,
+      "benchmark_total_return": 3.73028118,
+      "time_in_market": 0.66049559,
       "entries": 24,
       "exits": 23
     },
     {
-      "threshold": 0.00846199,
+      "threshold": 0.0084617,
       "threshold_method": "expanding_daily_sd_percentile",
       "threshold_quantile": 0.5,
-      "cagr": 0.07764985,
-      "annualized_volatility": 0.10805197,
-      "sharpe_zero_cash": 0.76422444,
-      "sortino_zero_cash": 1.0961783,
-      "annualized_downside_deviation": 0.07533077,
+      "cagr": 0.07769445,
+      "annualized_volatility": 0.10803684,
+      "sharpe_zero_cash": 0.76491552,
+      "sortino_zero_cash": 1.09717211,
+      "annualized_downside_deviation": 0.07532005,
       "max_drawdown": -0.19387249,
-      "total_return": 1.9112392,
-      "market_beta": 0.45253334,
-      "benchmark_cagr": 0.1147927,
-      "benchmark_annualized_volatility": 0.16048756,
-      "benchmark_sharpe_zero_cash": 0.77550909,
-      "benchmark_sortino_zero_cash": 1.08496572,
-      "benchmark_annualized_downside_deviation": 0.1147129,
+      "total_return": 1.91475231,
+      "market_beta": 0.45253444,
+      "benchmark_cagr": 0.11481714,
+      "benchmark_annualized_volatility": 0.16046481,
+      "benchmark_sharpe_zero_cash": 0.77593789,
+      "benchmark_sortino_zero_cash": 1.08556635,
+      "benchmark_annualized_downside_deviation": 0.11469656,
       "benchmark_max_drawdown": -0.38439852,
-      "benchmark_total_return": 3.72457984,
-      "time_in_market": 0.65897436,
+      "benchmark_total_return": 3.73028118,
+      "time_in_market": 0.65907149,
       "entries": 24,
       "exits": 23
     },
     {
-      "threshold": 0.00925351,
+      "threshold": 0.00925264,
       "threshold_method": "expanding_daily_sd_percentile",
       "threshold_quantile": 0.6,
-      "cagr": 0.07781875,
-      "annualized_volatility": 0.1078948,
-      "sharpe_zero_cash": 0.7666701,
-      "sortino_zero_cash": 1.10028421,
-      "annualized_downside_deviation": 0.07518032,
+      "cagr": 0.07786326,
+      "annualized_volatility": 0.10787968,
+      "sharpe_zero_cash": 0.76736198,
+      "sortino_zero_cash": 1.10127974,
+      "annualized_downside_deviation": 0.07516961,
       "max_drawdown": -0.18316404,
-      "total_return": 1.91776587,
-      "market_beta": 0.45116921,
-      "benchmark_cagr": 0.1147927,
-      "benchmark_annualized_volatility": 0.16048756,
-      "benchmark_sharpe_zero_cash": 0.77550909,
-      "benchmark_sortino_zero_cash": 1.08496572,
-      "benchmark_annualized_downside_deviation": 0.1147129,
+      "total_return": 1.92128686,
+      "market_beta": 0.45117031,
+      "benchmark_cagr": 0.11481714,
+      "benchmark_annualized_volatility": 0.16046481,
+      "benchmark_sharpe_zero_cash": 0.77593789,
+      "benchmark_sortino_zero_cash": 1.08556635,
+      "benchmark_annualized_downside_deviation": 0.11469656,
       "benchmark_max_drawdown": -0.38439852,
-      "benchmark_total_return": 3.72457984,
-      "time_in_market": 0.65783476,
+      "benchmark_total_return": 3.73028118,
+      "time_in_market": 0.65793221,
       "entries": 25,
       "exits": 24
     },
     {
-      "threshold": 0.01089346,
+      "threshold": 0.0108934,
       "threshold_method": "expanding_daily_sd_percentile",
       "threshold_quantile": 0.75,
-      "cagr": 0.07678857,
-      "annualized_volatility": 0.10755465,
-      "sharpe_zero_cash": 0.75962871,
-      "sortino_zero_cash": 1.09074725,
-      "annualized_downside_deviation": 0.07490425,
+      "cagr": 0.07683364,
+      "annualized_volatility": 0.10753959,
+      "sharpe_zero_cash": 0.76032412,
+      "sortino_zero_cash": 1.09174839,
+      "annualized_downside_deviation": 0.07489358,
       "max_drawdown": -0.1949016,
-      "total_return": 1.87816848,
-      "market_beta": 0.44829166,
-      "benchmark_cagr": 0.1147927,
-      "benchmark_annualized_volatility": 0.16048756,
-      "benchmark_sharpe_zero_cash": 0.77550909,
-      "benchmark_sortino_zero_cash": 1.08496572,
-      "benchmark_annualized_downside_deviation": 0.1147129,
+      "total_return": 1.88164168,
+      "market_beta": 0.44829277,
+      "benchmark_cagr": 0.11481714,
+      "benchmark_annualized_volatility": 0.16046481,
+      "benchmark_sharpe_zero_cash": 0.77593789,
+      "benchmark_sortino_zero_cash": 1.08556635,
+      "benchmark_annualized_downside_deviation": 0.11469656,
       "benchmark_max_drawdown": -0.38439852,
-      "benchmark_total_return": 3.72457984,
-      "time_in_market": 0.65441595,
+      "benchmark_total_return": 3.73028118,
+      "time_in_market": 0.65451438,
       "entries": 26,
       "exits": 25
     }
   ],
   "standard_deviation": {
     "summary": {
-      "current_daily_sd": 0.00699054,
-      "mean_daily_sd": 0.00903045,
-      "median_daily_sd": 0.00810861,
-      "p10_daily_sd": 0.00535873,
-      "p25_daily_sd": 0.00648986,
-      "p75_daily_sd": 0.01023218,
-      "p90_daily_sd": 0.01280782,
-      "share_daily_sd_above_1pct": 0.27094017,
-      "absolute_return_above_1pct": 0.22649573,
-      "up_return_above_1pct": 0.12022792,
-      "down_return_below_1pct": 0.10626781,
-      "current_annualized_sd": 0.11097137,
-      "median_annualized_sd": 0.12872012,
-      "p90_annualized_sd": 0.20331786,
-      "within_1sd": 0.69022514,
-      "within_2sd": 0.93901396,
-      "within_3sd": 0.98689085
+      "current_daily_sd": 0.00666529,
+      "mean_daily_sd": 0.00902978,
+      "median_daily_sd": 0.0081067,
+      "p10_daily_sd": 0.00535915,
+      "p25_daily_sd": 0.00649029,
+      "p75_daily_sd": 0.01023106,
+      "p90_daily_sd": 0.01280636,
+      "share_daily_sd_above_1pct": 0.270863,
+      "absolute_return_above_1pct": 0.22643122,
+      "up_return_above_1pct": 0.12019368,
+      "down_return_below_1pct": 0.10623754,
+      "current_annualized_sd": 0.10580812,
+      "median_annualized_sd": 0.12868995,
+      "p90_annualized_sd": 0.20329473,
+      "within_1sd": 0.69031339,
+      "within_2sd": 0.93903134,
+      "within_3sd": 0.98689459
     },
     "history": [
       {
@@ -15874,15 +19942,19 @@
         "date": "2026-08-07",
         "annualized_sd": 0.110971,
         "daily_sd": 0.006991
+      },
+      {
+        "date": "2026-08-10",
+        "annualized_sd": 0.105808,
+        "daily_sd": 0.006665
+      },
+      {
+        "date": "2026-08-14",
+        "annualized_sd": 0.105808,
+        "daily_sd": 0.006665
       }
     ],
     "recent": [
-      {
-        "date": "2025-07-30",
-        "return": 0.001367,
-        "upper_1sd": 0.00572,
-        "lower_1sd": -0.00572
-      },
       {
         "date": "2025-07-31",
         "return": -0.003494,
@@ -17388,6 +21460,12 @@
         "return": -0.002656,
         "upper_1sd": 0.00722,
         "lower_1sd": -0.00722
+      },
+      {
+        "date": "2026-08-10",
+        "return": 0.001206,
+        "upper_1sd": 0.006991,
+        "lower_1sd": -0.006991
       }
     ]
   },
@@ -17403,9 +21481,9 @@
           "sharpe_win_rate": 0.16666667,
           "sortino_win_rate": 0.16666667,
           "drawdown_win_rate": 1.0,
-          "median_cagr_delta": -0.06248405,
-          "median_sharpe_delta": -0.21842586,
-          "median_sortino_delta": -0.32733976,
+          "median_cagr_delta": -0.0624684,
+          "median_sharpe_delta": -0.21769215,
+          "median_sortino_delta": -0.32636835,
           "median_drawdown_improvement": 0.15185786
         },
         "rows": [
@@ -17414,26 +21492,26 @@
             "name": "S&P BSE Sensex",
             "group": "Indian indices",
             "evaluation_start": "2012-04-17",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3515,
-            "signal_threshold": 0.00842551,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3516,
+            "signal_threshold": 0.00842448,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "long",
-            "cagr": 0.0773772,
-            "benchmark_cagr": 0.11125065,
-            "cagr_delta": -0.03387345,
-            "sharpe": 0.76950277,
-            "benchmark_sharpe": 0.75467508,
-            "sharpe_delta": 0.01482769,
-            "sortino": 1.11347206,
-            "benchmark_sortino": 1.05891179,
-            "sortino_delta": 0.05456027,
+            "cagr": 0.07740256,
+            "benchmark_cagr": 0.11125707,
+            "cagr_delta": -0.03385451,
+            "sharpe": 0.77002997,
+            "benchmark_sharpe": 0.75499147,
+            "sharpe_delta": 0.0150385,
+            "sortino": 1.11423623,
+            "benchmark_sortino": 1.05935601,
+            "sortino_delta": 0.05488022,
             "max_drawdown": -0.16331535,
             "benchmark_max_drawdown": -0.38070054,
             "drawdown_improvement": 0.21738519,
-            "market_beta": 0.44157857,
-            "time_in_market": 0.64409673,
+            "market_beta": 0.44157912,
+            "time_in_market": 0.64419795,
             "entries": 24
           },
           {
@@ -17441,26 +21519,26 @@
             "name": "NIFTY 100",
             "group": "Indian indices",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3519,
-            "signal_threshold": 0.0085513,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3520,
+            "signal_threshold": 0.00854975,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "long",
-            "cagr": 0.07261265,
-            "benchmark_cagr": 0.11901485,
-            "cagr_delta": -0.0464022,
-            "sharpe": 0.71303222,
-            "benchmark_sharpe": 0.8010918,
-            "sharpe_delta": -0.08805958,
-            "sortino": 1.00579078,
-            "benchmark_sortino": 1.11192597,
-            "sortino_delta": -0.10613519,
+            "cagr": 0.07264611,
+            "benchmark_cagr": 0.11902257,
+            "cagr_delta": -0.04637646,
+            "sharpe": 0.71360108,
+            "benchmark_sharpe": 0.8014357,
+            "sharpe_delta": -0.08783462,
+            "sortino": 1.00659471,
+            "benchmark_sortino": 1.11240367,
+            "sortino_delta": -0.10580896,
             "max_drawdown": -0.19951195,
             "benchmark_max_drawdown": -0.38104346,
             "drawdown_improvement": 0.18153151,
-            "market_beta": 0.46477254,
-            "time_in_market": 0.66183575,
+            "market_beta": 0.46477322,
+            "time_in_market": 0.66193182,
             "entries": 25
           },
           {
@@ -17468,26 +21546,26 @@
             "name": "NIFTY Midcap 50",
             "group": "Indian indices",
             "evaluation_start": "2012-04-20",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3483,
-            "signal_threshold": 0.01173066,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3484,
+            "signal_threshold": 0.01172873,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "long",
-            "cagr": 0.05651545,
-            "benchmark_cagr": 0.15582625,
-            "cagr_delta": -0.0993108,
-            "sharpe": 0.43514918,
-            "benchmark_sharpe": 0.80752932,
-            "sharpe_delta": -0.37238014,
-            "sortino": 0.57787948,
-            "benchmark_sortino": 1.09230031,
-            "sortino_delta": -0.51442083,
+            "cagr": 0.05686076,
+            "benchmark_cagr": 0.15614439,
+            "cagr_delta": -0.09928363,
+            "sharpe": 0.43738782,
+            "benchmark_sharpe": 0.80913628,
+            "sharpe_delta": -0.37174846,
+            "sortino": 0.58087165,
+            "benchmark_sortino": 1.09449102,
+            "sortino_delta": -0.51361937,
             "max_drawdown": -0.47744423,
             "benchmark_max_drawdown": -0.49056592,
             "drawdown_improvement": 0.01312169,
-            "market_beta": 0.56081036,
-            "time_in_market": 0.63565891,
+            "market_beta": 0.56082696,
+            "time_in_market": 0.63576349,
             "entries": 26
           },
           {
@@ -17495,26 +21573,26 @@
             "name": "NIFTY Bank",
             "group": "Indian indices",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3525,
-            "signal_threshold": 0.01134873,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3526,
+            "signal_threshold": 0.01134865,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "long",
-            "cagr": 0.05240166,
-            "benchmark_cagr": 0.12703456,
-            "cagr_delta": -0.0746329,
-            "sharpe": 0.42280625,
-            "benchmark_sharpe": 0.66192453,
-            "sharpe_delta": -0.23911828,
-            "sortino": 0.61231684,
-            "benchmark_sortino": 0.94769238,
-            "sortino_delta": -0.33537554,
+            "cagr": 0.05235339,
+            "benchmark_cagr": 0.12693855,
+            "cagr_delta": -0.07458516,
+            "sharpe": 0.42263331,
+            "benchmark_sharpe": 0.66175411,
+            "sharpe_delta": -0.2391208,
+            "sortino": 0.61206649,
+            "benchmark_sortino": 0.94744872,
+            "sortino_delta": -0.33538223,
             "max_drawdown": -0.28481593,
             "benchmark_max_drawdown": -0.47855603,
             "drawdown_improvement": 0.1937401,
-            "market_beta": 0.45602256,
-            "time_in_market": 0.63829787,
+            "market_beta": 0.4560227,
+            "time_in_market": 0.63840045,
             "entries": 29
           },
           {
@@ -17522,26 +21600,26 @@
             "name": "NIFTY IT",
             "group": "Indian indices",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3525,
-            "signal_threshold": 0.0115789,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3526,
+            "signal_threshold": 0.01158139,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "long",
-            "cagr": 0.05959832,
-            "benchmark_cagr": 0.12632438,
-            "cagr_delta": -0.06672606,
-            "sharpe": 0.46644865,
-            "benchmark_sharpe": 0.68308383,
-            "sharpe_delta": -0.21663518,
-            "sortino": 0.64896921,
-            "benchmark_sortino": 0.97789362,
-            "sortino_delta": -0.32892441,
+            "cagr": 0.06027487,
+            "benchmark_cagr": 0.12700405,
+            "cagr_delta": -0.06672918,
+            "sharpe": 0.47086603,
+            "benchmark_sharpe": 0.68621714,
+            "sharpe_delta": -0.21535111,
+            "sortino": 0.65520442,
+            "benchmark_sortino": 0.98244447,
+            "sortino_delta": -0.32724005,
             "max_drawdown": -0.31755158,
             "benchmark_max_drawdown": -0.43973579,
             "drawdown_improvement": 0.12218421,
-            "market_beta": 0.51815525,
-            "time_in_market": 0.58609929,
+            "market_beta": 0.51822353,
+            "time_in_market": 0.58621668,
             "entries": 29
           },
           {
@@ -17549,26 +21627,26 @@
             "name": "NIFTY Pharma",
             "group": "Indian indices",
             "evaluation_start": "2013-05-20",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3255,
-            "signal_threshold": 0.01005163,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3256,
+            "signal_threshold": 0.01005134,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "long",
-            "cagr": 0.05080088,
-            "benchmark_cagr": 0.10904291,
-            "cagr_delta": -0.05824203,
-            "sharpe": 0.43212686,
-            "benchmark_sharpe": 0.6523434,
-            "sharpe_delta": -0.22021654,
-            "sortino": 0.61956141,
-            "benchmark_sortino": 0.94531651,
-            "sortino_delta": -0.3257551,
+            "cagr": 0.05085037,
+            "benchmark_cagr": 0.10905799,
+            "cagr_delta": -0.05820762,
+            "sharpe": 0.43262954,
+            "benchmark_sharpe": 0.65266274,
+            "sharpe_delta": -0.2200332,
+            "sortino": 0.62028287,
+            "benchmark_sortino": 0.94577952,
+            "sortino_delta": -0.32549665,
             "max_drawdown": -0.44407478,
             "benchmark_max_drawdown": -0.53494108,
             "drawdown_improvement": 0.0908663,
-            "market_beta": 0.54268483,
-            "time_in_market": 0.57695853,
+            "market_beta": 0.54268541,
+            "time_in_market": 0.57708845,
             "entries": 25
           }
         ]
@@ -17581,10 +21659,10 @@
           "sharpe_win_rate": 0.0,
           "sortino_win_rate": 0.0,
           "drawdown_win_rate": 0.8,
-          "median_cagr_delta": -0.09385948,
-          "median_sharpe_delta": -0.27670125,
-          "median_sortino_delta": -0.41191199,
-          "median_drawdown_improvement": 0.07411634
+          "median_cagr_delta": -0.09378,
+          "median_sharpe_delta": -0.27644691,
+          "median_sortino_delta": -0.41152848,
+          "median_drawdown_improvement": 0.07411625
         },
         "rows": [
           {
@@ -17592,26 +21670,26 @@
             "name": "HDFC Bank",
             "group": "Indian large caps",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3534,
-            "signal_threshold": 0.01174701,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3535,
+            "signal_threshold": 0.0117495,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "long",
-            "cagr": 0.05191532,
-            "benchmark_cagr": 0.13728324,
-            "cagr_delta": -0.08536792,
-            "sharpe": 0.41056717,
-            "benchmark_sharpe": 0.6936569,
-            "sharpe_delta": -0.28308973,
-            "sortino": 0.60340765,
-            "benchmark_sortino": 1.0243405,
-            "sortino_delta": -0.42093285,
-            "max_drawdown": -0.35205844,
-            "benchmark_max_drawdown": -0.41054981,
-            "drawdown_improvement": 0.05849137,
-            "market_beta": 0.4697349,
-            "time_in_market": 0.63808715,
+            "cagr": 0.05242073,
+            "benchmark_cagr": 0.13777869,
+            "cagr_delta": -0.08535796,
+            "sharpe": 0.41384402,
+            "benchmark_sharpe": 0.69584452,
+            "sharpe_delta": -0.2820005,
+            "sortino": 0.60826857,
+            "benchmark_sortino": 1.02760304,
+            "sortino_delta": -0.41933447,
+            "max_drawdown": -0.35205833,
+            "benchmark_max_drawdown": -0.41054975,
+            "drawdown_improvement": 0.05849142,
+            "market_beta": 0.46977155,
+            "time_in_market": 0.63818953,
             "entries": 31
           },
           {
@@ -17619,26 +21697,26 @@
             "name": "ICICI Bank",
             "group": "Indian large caps",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3534,
-            "signal_threshold": 0.01665464,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3535,
+            "signal_threshold": 0.01665348,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "long",
-            "cagr": 0.08081964,
-            "benchmark_cagr": 0.17881198,
-            "cagr_delta": -0.09799234,
-            "sharpe": 0.47664311,
-            "benchmark_sharpe": 0.70713147,
-            "sharpe_delta": -0.23048836,
-            "sortino": 0.72912488,
-            "benchmark_sortino": 1.06905699,
-            "sortino_delta": -0.33993211,
-            "max_drawdown": -0.32371214,
-            "benchmark_max_drawdown": -0.51530525,
-            "drawdown_improvement": 0.19159311,
-            "market_beta": 0.50408181,
-            "time_in_market": 0.64770798,
+            "cagr": 0.08084573,
+            "benchmark_cagr": 0.1787818,
+            "cagr_delta": -0.09793607,
+            "sharpe": 0.4769031,
+            "benchmark_sharpe": 0.70726444,
+            "sharpe_delta": -0.23036134,
+            "sortino": 0.72952272,
+            "benchmark_sortino": 1.06925784,
+            "sortino_delta": -0.33973512,
+            "max_drawdown": -0.32371235,
+            "benchmark_max_drawdown": -0.5153052,
+            "drawdown_improvement": 0.19159285,
+            "market_beta": 0.50408209,
+            "time_in_market": 0.64780764,
             "entries": 26
           },
           {
@@ -17646,26 +21724,26 @@
             "name": "Reliance Industries",
             "group": "Indian large caps",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3534,
-            "signal_threshold": 0.01466351,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3535,
+            "signal_threshold": 0.01466378,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "cash",
-            "cagr": 0.04859713,
-            "benchmark_cagr": 0.16298283,
-            "cagr_delta": -0.1143857,
-            "sharpe": 0.3526657,
-            "benchmark_sharpe": 0.71382498,
-            "sharpe_delta": -0.36115928,
-            "sortino": 0.52644762,
-            "benchmark_sortino": 1.07352789,
-            "sortino_delta": -0.54708027,
-            "max_drawdown": -0.45187812,
-            "benchmark_max_drawdown": -0.45088357,
-            "drawdown_improvement": -0.00099455,
-            "market_beta": 0.49468741,
-            "time_in_market": 0.53621958,
+            "cagr": 0.04856859,
+            "benchmark_cagr": 0.16247341,
+            "cagr_delta": -0.11390482,
+            "sharpe": 0.35261584,
+            "benchmark_sharpe": 0.71236079,
+            "sharpe_delta": -0.35974495,
+            "sortino": 0.52637312,
+            "benchmark_sortino": 1.07131278,
+            "sortino_delta": -0.54493966,
+            "max_drawdown": -0.45187813,
+            "benchmark_max_drawdown": -0.45088352,
+            "drawdown_improvement": -0.00099461,
+            "market_beta": 0.49467216,
+            "time_in_market": 0.53606789,
             "entries": 29
           },
           {
@@ -17673,26 +21751,26 @@
             "name": "Bharti Airtel",
             "group": "Indian large caps",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3534,
-            "signal_threshold": 0.01706627,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3535,
+            "signal_threshold": 0.01706575,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "long",
-            "cagr": 0.06142972,
-            "benchmark_cagr": 0.15115634,
-            "cagr_delta": -0.08972662,
-            "sharpe": 0.38825626,
-            "benchmark_sharpe": 0.63481489,
-            "sharpe_delta": -0.24655863,
-            "sortino": 0.57608241,
-            "benchmark_sortino": 0.97236076,
-            "sortino_delta": -0.39627835,
-            "max_drawdown": -0.4051096,
-            "benchmark_max_drawdown": -0.46781879,
-            "drawdown_improvement": 0.06270919,
-            "market_beta": 0.54654737,
-            "time_in_market": 0.59337861,
+            "cagr": 0.06084668,
+            "benchmark_cagr": 0.1504706,
+            "cagr_delta": -0.08962392,
+            "sharpe": 0.3857748,
+            "benchmark_sharpe": 0.63292656,
+            "sharpe_delta": -0.24715176,
+            "sortino": 0.57237453,
+            "benchmark_sortino": 0.96944363,
+            "sortino_delta": -0.3970691,
+            "max_drawdown": -0.40511001,
+            "benchmark_max_drawdown": -0.46781883,
+            "drawdown_improvement": 0.06270882,
+            "market_beta": 0.54656904,
+            "time_in_market": 0.59349364,
             "entries": 31
           },
           {
@@ -17700,26 +21778,26 @@
             "name": "Larsen & Toubro",
             "group": "Indian large caps",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3534,
-            "signal_threshold": 0.01516754,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3535,
+            "signal_threshold": 0.01516649,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "cash",
-            "cagr": 0.03870168,
-            "benchmark_cagr": 0.16299149,
-            "cagr_delta": -0.12428981,
-            "sharpe": 0.29782236,
-            "benchmark_sharpe": 0.69592604,
-            "sharpe_delta": -0.39810368,
-            "sortino": 0.44790046,
-            "benchmark_sortino": 1.04291097,
-            "sortino_delta": -0.59501051,
-            "max_drawdown": -0.42148989,
-            "benchmark_max_drawdown": -0.54442401,
-            "drawdown_improvement": 0.12293412,
-            "market_beta": 0.47786929,
-            "time_in_market": 0.60526316,
+            "cagr": 0.03723681,
+            "benchmark_cagr": 0.16291676,
+            "cagr_delta": -0.12567995,
+            "sharpe": 0.29031811,
+            "benchmark_sharpe": 0.69591032,
+            "sharpe_delta": -0.40559221,
+            "sortino": 0.43640994,
+            "benchmark_sortino": 1.04288739,
+            "sortino_delta": -0.60647745,
+            "max_drawdown": -0.43288489,
+            "benchmark_max_drawdown": -0.54442393,
+            "drawdown_improvement": 0.11153904,
+            "market_beta": 0.4782213,
+            "time_in_market": 0.60537482,
             "entries": 30
           },
           {
@@ -17727,26 +21805,26 @@
             "name": "Infosys",
             "group": "Indian large caps",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3534,
-            "signal_threshold": 0.01449036,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3535,
+            "signal_threshold": 0.01449469,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "cash",
-            "cagr": 0.01794255,
-            "benchmark_cagr": 0.13048004,
-            "cagr_delta": -0.11253749,
-            "sharpe": 0.19314569,
-            "benchmark_sharpe": 0.59595625,
-            "sharpe_delta": -0.40281056,
-            "sortino": 0.26010961,
-            "benchmark_sortino": 0.85029628,
-            "sortino_delta": -0.59018667,
-            "max_drawdown": -0.4677405,
-            "benchmark_max_drawdown": -0.48171648,
-            "drawdown_improvement": 0.01397598,
-            "market_beta": 0.57214359,
-            "time_in_market": 0.59281268,
+            "cagr": 0.01793218,
+            "benchmark_cagr": 0.13130941,
+            "cagr_delta": -0.11337723,
+            "sharpe": 0.19311845,
+            "benchmark_sharpe": 0.59885997,
+            "sharpe_delta": -0.40574152,
+            "sortino": 0.26007293,
+            "benchmark_sortino": 0.85448803,
+            "sortino_delta": -0.5944151,
+            "max_drawdown": -0.46774049,
+            "benchmark_max_drawdown": -0.48171645,
+            "drawdown_improvement": 0.01397596,
+            "market_beta": 0.57207686,
+            "time_in_market": 0.59264498,
             "entries": 28
           },
           {
@@ -17754,26 +21832,26 @@
             "name": "State Bank of India",
             "group": "Indian large caps",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3534,
-            "signal_threshold": 0.01760329,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3535,
+            "signal_threshold": 0.01760195,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "long",
-            "cagr": 0.02678141,
-            "benchmark_cagr": 0.13110688,
-            "cagr_delta": -0.10432547,
-            "sharpe": 0.23239993,
-            "benchmark_sharpe": 0.5503303,
-            "sharpe_delta": -0.31793037,
-            "sortino": 0.34133459,
-            "benchmark_sortino": 0.82893381,
-            "sortino_delta": -0.48759922,
-            "max_drawdown": -0.41531962,
-            "benchmark_max_drawdown": -0.59492484,
-            "drawdown_improvement": 0.17960522,
-            "market_beta": 0.46858962,
-            "time_in_market": 0.56960951,
+            "cagr": 0.02626741,
+            "benchmark_cagr": 0.13047794,
+            "cagr_delta": -0.10421053,
+            "sharpe": 0.23011622,
+            "benchmark_sharpe": 0.54870582,
+            "sharpe_delta": -0.3185896,
+            "sortino": 0.33796731,
+            "benchmark_sortino": 0.82647242,
+            "sortino_delta": -0.48850511,
+            "max_drawdown": -0.41531959,
+            "benchmark_max_drawdown": -0.59492476,
+            "drawdown_improvement": 0.17960517,
+            "market_beta": 0.46860816,
+            "time_in_market": 0.56973126,
             "entries": 29
           },
           {
@@ -17781,26 +21859,26 @@
             "name": "Axis Bank",
             "group": "Indian large caps",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3534,
-            "signal_threshold": 0.01710229,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3535,
+            "signal_threshold": 0.01710215,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "cash",
-            "cagr": 0.06023668,
-            "benchmark_cagr": 0.12746876,
-            "cagr_delta": -0.06723208,
-            "sharpe": 0.38011833,
-            "benchmark_sharpe": 0.53779325,
-            "sharpe_delta": -0.15767492,
-            "sortino": 0.56841335,
-            "benchmark_sortino": 0.78631882,
-            "sortino_delta": -0.21790547,
-            "max_drawdown": -0.38464641,
-            "benchmark_max_drawdown": -0.63110543,
-            "drawdown_improvement": 0.24645902,
-            "market_beta": 0.45110318,
-            "time_in_market": 0.61290323,
+            "cagr": 0.06020109,
+            "benchmark_cagr": 0.1275881,
+            "cagr_delta": -0.06738701,
+            "sharpe": 0.38006451,
+            "benchmark_sharpe": 0.53825952,
+            "sharpe_delta": -0.15819501,
+            "sortino": 0.56833284,
+            "benchmark_sortino": 0.7870013,
+            "sortino_delta": -0.21866846,
+            "max_drawdown": -0.38464639,
+            "benchmark_max_drawdown": -0.63110539,
+            "drawdown_improvement": 0.246459,
+            "market_beta": 0.45110185,
+            "time_in_market": 0.61272984,
             "entries": 31
           },
           {
@@ -17808,26 +21886,26 @@
             "name": "Kotak Mahindra Bank",
             "group": "Indian large caps",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3534,
-            "signal_threshold": 0.01482945,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3535,
+            "signal_threshold": 0.01482592,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
-            "latest_position": "long",
-            "cagr": 0.05334471,
-            "benchmark_cagr": 0.14302693,
-            "cagr_delta": -0.08968222,
-            "sharpe": 0.3791893,
-            "benchmark_sharpe": 0.64950207,
-            "sharpe_delta": -0.27031277,
-            "sortino": 0.55333896,
-            "benchmark_sortino": 0.9562301,
-            "sortino_delta": -0.40289114,
-            "max_drawdown": -0.44647479,
+            "latest_position": "cash",
+            "cagr": 0.05291688,
+            "benchmark_cagr": 0.14250912,
+            "cagr_delta": -0.08959224,
+            "sharpe": 0.37705015,
+            "benchmark_sharpe": 0.64794346,
+            "sharpe_delta": -0.27089331,
+            "sortino": 0.55020033,
+            "benchmark_sortino": 0.95392281,
+            "sortino_delta": -0.40372248,
+            "max_drawdown": -0.44647474,
             "benchmark_max_drawdown": -0.36498985,
-            "drawdown_improvement": -0.08148494,
-            "market_beta": 0.49195043,
-            "time_in_market": 0.61686474,
+            "drawdown_improvement": -0.08148489,
+            "market_beta": 0.49196714,
+            "time_in_market": 0.61697313,
             "entries": 32
           },
           {
@@ -17835,26 +21913,26 @@
             "name": "ITC",
             "group": "Indian large caps",
             "evaluation_start": "2012-04-16",
-            "evaluation_end": "2026-08-07",
-            "forecast_count": 3534,
-            "signal_threshold": 0.01311766,
+            "evaluation_end": "2026-08-10",
+            "forecast_count": 3535,
+            "signal_threshold": 0.01311728,
             "threshold_method": "expanding_daily_sd_percentile",
             "threshold_quantile": 0.5,
             "latest_position": "cash",
-            "cagr": 0.04218581,
-            "benchmark_cagr": 0.07803418,
-            "cagr_delta": -0.03584837,
-            "sharpe": 0.32596465,
-            "benchmark_sharpe": 0.43831863,
-            "sharpe_delta": -0.11235398,
-            "sortino": 0.46037512,
-            "benchmark_sortino": 0.62377341,
-            "sortino_delta": -0.16339829,
-            "max_drawdown": -0.4672879,
-            "benchmark_max_drawdown": -0.55281138,
-            "drawdown_improvement": 0.08552348,
-            "market_beta": 0.54292104,
-            "time_in_market": 0.55998868,
+            "cagr": 0.04216121,
+            "benchmark_cagr": 0.07735359,
+            "cagr_delta": -0.03519238,
+            "sharpe": 0.32591917,
+            "benchmark_sharpe": 0.43576687,
+            "sharpe_delta": -0.1098477,
+            "sortino": 0.46031081,
+            "benchmark_sortino": 0.62011742,
+            "sortino_delta": -0.15980661,
+            "max_drawdown": -0.46728772,
+            "benchmark_max_drawdown": -0.55281141,
+            "drawdown_improvement": 0.08552369,
+            "market_beta": 0.54287207,
+            "time_in_market": 0.55983027,
             "entries": 24
           }
         ]

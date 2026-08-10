@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -137,6 +138,18 @@ type CustomSignalReport = {
     signal_threshold: number | null;
     position: number | null;
   }>;
+  momentum_diagnostic: {
+    percentile_lookback_sessions: number;
+    minimum_history_sessions: number;
+    points: Array<{
+      date: string;
+      close: number | null;
+      custom_score: number | null;
+      score_percentile: number | null;
+      signal_threshold: number | null;
+      position: number | null;
+    }>;
+  };
   yearly_returns: Array<{
     year: number;
     strategy: number | null;
@@ -226,6 +239,10 @@ const STRATEGY = "#059669";
 const BENCHMARK = "#2563eb";
 const DOWN = "#e11d48";
 const PURPLE = "#9333ea";
+const AMBER = "#d97706";
+const priceFormatter = new Intl.NumberFormat("en-IN", {
+  maximumFractionDigits: 2,
+});
 
 function percent(value: number | null | undefined, digits = 1) {
   if (value == null || !Number.isFinite(value)) return "—";
@@ -278,6 +295,154 @@ function ChartTooltip({ active, payload, label, equity = false }: { active?: boo
         ))}
       </div>
     </div>
+  );
+}
+
+type MomentumPoint = CustomSignalReport["momentum_diagnostic"]["points"][number];
+type MomentumRulePoint = MomentumPoint & {
+  candidate_position: number;
+  entry_price: number | null;
+  exit_price: number | null;
+};
+
+function MomentumTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number; color?: string }>; label?: string | number }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="min-w-48 rounded-md border border-border bg-card/95 p-3 text-xs shadow-xl backdrop-blur">
+      <p className="mb-2 font-medium">{typeof label === "string" ? fullDate(label) : String(label ?? "")}</p>
+      <div className="space-y-1.5">
+        {payload.filter((item) => item.value != null).map((item) => {
+          const isPrice = item.name === "NIFTY 50 close" || item.name === "Candidate entry" || item.name === "Candidate exit";
+          const shown = isPrice
+            ? priceFormatter.format(item.value ?? 0)
+            : item.name === "Score percentile" || item.name === "Candidate position"
+              ? probability(item.value)
+              : percent(item.value, 2);
+          return (
+            <div key={item.name} className="flex items-center justify-between gap-5">
+              <span className="flex items-center gap-1.5 text-muted-foreground"><span className="size-2 rounded-full" style={{ background: item.color }} />{item.name}</span>
+              <span className="font-mono font-semibold">{shown}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MomentumDiagnostic({ diagnostic }: { diagnostic: CustomSignalReport["momentum_diagnostic"] }) {
+  const [windowSessions, setWindowSessions] = useState(126);
+  const [entryPercentile, setEntryPercentile] = useState(70);
+  const [exitPercentile, setExitPercentile] = useState(40);
+
+  const rulePoints = useMemo<MomentumRulePoint[]>(() => {
+    return diagnostic.points.reduce<MomentumRulePoint[]>((points, point) => {
+      const previousPosition = points.at(-1)?.candidate_position ?? 0;
+      const rank = point.score_percentile;
+      const shouldEnter = rank != null && point.close != null && previousPosition === 0 && rank >= entryPercentile / 100;
+      const shouldExit = rank != null && point.close != null && previousPosition === 1 && rank <= exitPercentile / 100;
+      const candidatePosition = shouldEnter ? 1 : shouldExit ? 0 : previousPosition;
+      return [...points, {
+        ...point,
+        candidate_position: candidatePosition,
+        entry_price: shouldEnter ? point.close : null,
+        exit_price: shouldExit ? point.close : null,
+      }];
+    }, []);
+  }, [diagnostic.points, entryPercentile, exitPercentile]);
+
+  const visible = useMemo(
+    () => rulePoints.slice(-Math.min(windowSessions, rulePoints.length)),
+    [rulePoints, windowSessions]
+  );
+  const visibleDates = useMemo(() => new Set(visible.map((point) => point.date)), [visible]);
+  const followThrough = useMemo(() => {
+    const returns: number[] = [];
+    rulePoints.forEach((point, index) => {
+      const future = rulePoints[index + 5];
+      if (point.entry_price != null && future?.close != null && visibleDates.has(point.date)) {
+        returns.push(future.close / point.entry_price - 1);
+      }
+    });
+    return {
+      entries: visible.filter((point) => point.entry_price != null).length,
+      exits: visible.filter((point) => point.exit_price != null).length,
+      averageFiveSessionReturn: returns.length
+        ? returns.reduce((sum, value) => sum + value, 0) / returns.length
+        : null,
+      positiveFiveSessionRate: returns.length
+        ? returns.filter((value) => value > 0).length / returns.length
+        : null,
+    };
+  }, [rulePoints, visible, visibleDates]);
+
+  return (
+    <Card>
+      <CardHeader className="border-b border-border/70">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <CardTitle className="text-base">Price versus indicator momentum diagnostic</CardTitle>
+            <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+              The lower panel ranks each score against the preceding {diagnostic.percentile_lookback_sessions} sessions. Entry and exit use separate percentiles, so this experiment does not depend on one fixed score or the current median-volatility cutoff.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-[10px]">
+            <label className="space-y-1"><span className="block text-muted-foreground">History</span><select value={windowSessions} onChange={(event) => setWindowSessions(Number(event.target.value))} className="h-8 rounded-md border border-border bg-background px-2 font-mono"><option value={21}>1 month</option><option value={63}>3 months</option><option value={126}>6 months</option><option value={252}>1 year</option><option value={504}>2 years</option></select></label>
+            <label className="space-y-1"><span className="block text-muted-foreground">Enter above</span><select value={entryPercentile} onChange={(event) => setEntryPercentile(Number(event.target.value))} className="h-8 rounded-md border border-border bg-background px-2 font-mono">{[60, 70, 80, 90].map((value) => <option key={value} value={value}>{value}th percentile</option>)}</select></label>
+            <label className="space-y-1"><span className="block text-muted-foreground">Exit below</span><select value={exitPercentile} onChange={(event) => setExitPercentile(Number(event.target.value))} className="h-8 rounded-md border border-border bg-background px-2 font-mono">{[20, 30, 40, 50].filter((value) => value < entryPercentile).map((value) => <option key={value} value={value}>{value}th percentile</option>)}</select></label>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-5">
+        <div className="grid gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-4">
+          <div className="bg-card p-3"><p className="terminal-label">Candidate entries</p><p className="mt-1 font-mono text-lg font-semibold">{followThrough.entries}</p></div>
+          <div className="bg-card p-3"><p className="terminal-label">Candidate exits</p><p className="mt-1 font-mono text-lg font-semibold">{followThrough.exits}</p></div>
+          <div className="bg-card p-3"><p className="terminal-label">Average next 5 sessions</p><p className="mt-1 font-mono text-lg font-semibold">{percent(followThrough.averageFiveSessionReturn, 2)}</p></div>
+          <div className="bg-card p-3"><p className="terminal-label">Positive after 5 sessions</p><p className="mt-1 font-mono text-lg font-semibold">{probability(followThrough.positiveFiveSessionRate)}</p></div>
+        </div>
+
+        <div>
+          <p className="mb-2 terminal-label">NIFTY 50 price · candidate entry/exit markers</p>
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={visible} syncId="momentum-diagnostic" margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis dataKey="date" tickFormatter={dateLabel} minTickGap={42} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis domain={["auto", "auto"]} tickFormatter={(value) => priceFormatter.format(value)} width={58} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<MomentumTooltip />} />
+                <Line type="monotone" dataKey="close" name="NIFTY 50 close" stroke={BENCHMARK} strokeWidth={2} dot={false} />
+                <Line type="linear" dataKey="entry_price" name="Candidate entry" stroke="transparent" dot={{ r: 4, fill: STRATEGY, stroke: "white", strokeWidth: 1.5 }} activeDot={false} connectNulls={false} />
+                <Line type="linear" dataKey="exit_price" name="Candidate exit" stroke="transparent" dot={{ r: 4, fill: DOWN, stroke: "white", strokeWidth: 1.5 }} activeDot={false} connectNulls={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 terminal-label">Custom score and its trailing percentile rank</p>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={visible} syncId="momentum-diagnostic" margin={{ top: 8, right: 8, left: 4, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis dataKey="date" tickFormatter={dateLabel} minTickGap={42} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="score" tickFormatter={(value) => `${(value * 100).toFixed(1)}%`} width={52} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="rank" orientation="right" domain={[0, 1]} tickFormatter={(value) => `${Math.round(value * 100)}th`} width={44} tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<MomentumTooltip />} />
+                <ReferenceLine yAxisId="score" y={0} stroke="var(--border)" />
+                <ReferenceLine yAxisId="rank" y={entryPercentile / 100} stroke={STRATEGY} strokeDasharray="5 4" />
+                <ReferenceLine yAxisId="rank" y={exitPercentile / 100} stroke={DOWN} strokeDasharray="5 4" />
+                <Area yAxisId="rank" type="stepAfter" dataKey="candidate_position" name="Candidate position" fill={STRATEGY} fillOpacity={0.07} stroke="none" />
+                <Line yAxisId="score" type="monotone" dataKey="custom_score" name="Custom score" stroke={PURPLE} strokeWidth={1.8} dot={false} />
+                <Line yAxisId="rank" type="monotone" dataKey="score_percentile" name="Score percentile" stroke={AMBER} strokeWidth={1.6} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <p className="text-[10px] leading-4 text-muted-foreground">
+          This is a descriptive research view, not a selected production rule. The percentile uses only information available before each observation. The five-session figures are gross follow-through diagnostics and exclude trading costs; choose entry and exit bands using walk-forward validation, not the best-looking setting on this chart.
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -347,6 +512,8 @@ export function CustomSignalView({ report }: { report: CustomSignalReport }) {
           <Metric label="Time invested" value={probability(metrics.time_in_market)} detail="Long exposure; otherwise cash" />
         </div>
       </section>
+
+      <MomentumDiagnostic diagnostic={report.momentum_diagnostic} />
 
       <section className="space-y-5">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">

@@ -1,0 +1,68 @@
+DORMANT WEBSITE FEATURES
+Last updated: 10 August 2026
+
+Purpose
+-------
+This inventory records implemented features that are intentionally unavailable on
+the website. Check this file before building a similar feature from scratch.
+
+Availability control
+--------------------
+File: apps/web/lib/feature-availability.ts
+
+The website navigation and route guards use the switches in that file. To restore
+a feature, set its switch to true, run the web checks, and update this inventory.
+
+1. Custom signal
+----------------
+Status: Hidden from navigation; /custom-signal returns 404.
+Switch: customSignal
+
+Website implementation:
+- apps/web/app/custom-signal/page.tsx
+- apps/web/components/custom-signal-view.tsx
+- apps/web/components/ensemble-signal-experiment.tsx
+- apps/web/data/custom-signal.json
+- apps/web/data/ensemble-signal.json
+
+Research and tests:
+- scripts/generate_custom_signal.py
+- scripts/test_custom_signal.py
+- scripts/generate_ensemble_signal.py
+- scripts/test_ensemble_signal.py
+- scripts/generate_custom_signal_pdf.py
+- scripts/generate_custom_signal_latex_report.py
+
+2. Alternative signal
+---------------------
+Status: Hidden from navigation; /alternative-signal returns 404.
+Switch: alternativeSignal
+
+Website implementation:
+- apps/web/app/alternative-signal/page.tsx
+- apps/web/components/alternative-signal-view.tsx
+- apps/web/data/alternative-signal.json
+
+Research and tests:
+- scripts/generate_alternative_signal.py
+- scripts/test_alternative_signal.py
+
+3. Robust signal
+----------------
+Status: Hidden from navigation; /robust-signal returns 404.
+Switch: robustSignal
+
+Website implementation:
+- apps/web/app/robust-signal/page.tsx
+- apps/web/components/robust-signal-view.tsx
+- apps/web/data/robust-signal.json
+
+Research and tests:
+- scripts/generate_robust_signal.py
+- scripts/test_robust_signal.py
+- docs/robust-signal-methodology.md
+
+Production policy
+-----------------
+These features remain research code. Do not expose them again without reviewing
+their methodology, data assumptions, forward evidence, and current dependencies.

@@ -10,6 +10,7 @@ from scripts.generate_custom_signal import (
     build_model_frame,
     downside_metrics,
     expanding_volatility_percentile_threshold,
+    rolling_score_percentile,
     walk_forward_probabilities,
     yeo_johnson_tail_probability,
 )
@@ -91,6 +92,21 @@ class CustomSignalTests(unittest.TestCase):
             original.iloc[VOLATILITY_THRESHOLD_MINIMUM_ROWS],
             frame.iloc[:VOLATILITY_THRESHOLD_MINIMUM_ROWS, 0].quantile(0.50),
         )
+
+    def test_score_percentile_uses_only_prior_observations(self) -> None:
+        score = pd.Series(
+            np.arange(70, dtype=float),
+            index=pd.bdate_range("2025-01-01", periods=70),
+        )
+        original = rolling_score_percentile(score, lookback=63, minimum_rows=5)
+        changed = score.copy()
+        changed.iloc[-1] = -1000
+        revised = rolling_score_percentile(changed, lookback=63, minimum_rows=5)
+
+        pd.testing.assert_series_equal(original.iloc[:-1], revised.iloc[:-1])
+        self.assertTrue(original.iloc[:5].isna().all())
+        self.assertEqual(original.iloc[5], 1.0)
+        self.assertEqual(revised.iloc[-1], 0.0)
 
     def test_sortino_uses_zero_mar_and_only_downside_returns(self) -> None:
         returns = pd.Series([0.01, -0.01, 0.02, -0.005])
