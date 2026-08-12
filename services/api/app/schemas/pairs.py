@@ -162,3 +162,58 @@ class PaperPairTradeOut(BaseModel):
     live_mark: PaperPairTradeMarkOut | None = None
     marks: list[PaperPairTradeMarkOut] = Field(default_factory=list)
     valuation_limitation: str | None = None
+
+
+class PaperPairPortfolioCreate(BaseModel):
+    owner_portfolio_id: UUID
+    investment_amount_inr: float = Field(ge=10_000, le=1_000_000_000)
+    p_value_threshold: float = Field(default=0.001, ge=0.0001, le=0.05)
+
+
+class PaperPairPortfolioRefresh(BaseModel):
+    owner_portfolio_id: UUID
+
+
+class PaperPairPortfolioPositionOut(BaseModel):
+    pair_id: str
+    long_ticker: str
+    short_ticker: str
+    long_units: float
+    short_units: float
+    entry_long_price: float
+    entry_short_price: float
+    entry_price_date: str
+    entry_long_notional: float
+    entry_short_notional: float
+    allocated_gross_inr: float
+    hedge_ratio: float
+    entry_zscore: float
+    entry_q_value: float
+    pair_quality_rank: int
+    mean_abs_correlation_to_portfolio: float
+
+
+class PaperPairPortfolioMarkOut(BaseModel):
+    date: str
+    portfolio_value_inr: float
+    total_pnl_inr: float
+    return_percent: float
+    current_gross_notional_inr: float
+
+
+class PaperPairPortfolioOut(BaseModel):
+    id: UUID
+    owner_portfolio_id: UUID
+    status: Literal["current", "superseded"]
+    initial_capital_inr: float
+    allocated_gross_inr: float
+    unallocated_cash_inr: float
+    p_value_threshold: float
+    entry_price_date: str
+    entry_price_source: str
+    positions: list[PaperPairPortfolioPositionOut] = Field(default_factory=list)
+    marks: list[PaperPairPortfolioMarkOut] = Field(default_factory=list)
+    selection_summary: dict
+    limitations: list[str] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime

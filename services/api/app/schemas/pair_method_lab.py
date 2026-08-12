@@ -65,6 +65,9 @@ class PairMethodLabCandidate(BaseModel):
     ]
     long_ticker: str | None = None
     short_ticker: str | None = None
+    tracker_entry_type: Literal["direct", "confirmed_convergence"] | None = None
+    tracker_recent_peak_abs_zscore: float | None = None
+    tracker_remaining_return_percent: float | None = None
 
     rolling_windows: int
     stability_passed_windows: int
@@ -175,6 +178,9 @@ class PaperLabSpotTradeOut(BaseModel):
     entry_q_value: float
     entry_expected_return_percent: float | None = None
     formal_entry_signal: bool
+    entry_signal_type: Literal["direct", "confirmed_convergence", "legacy"]
+    entry_recent_peak_abs_zscore: float | None = None
+    entry_remaining_return_percent: float | None = None
     entry_price_timestamp: datetime
     entry_price_source: str
     created_at: datetime

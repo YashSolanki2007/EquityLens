@@ -8,10 +8,10 @@ from app.models import PaperLabSpotTrade
 from app.services import paper_lab_spot_trades
 from app.services.paper_lab_spot_trades import (
     AUTOMATIC_ENTRY_CREATION_ENABLED,
-    ENTRY_KSS_STATISTIC_CUTOFF,
-    ENTRY_P_VALUE_CUTOFF,
+    ENTRY_FDR_Q_CUTOFF,
+    EXIT_PROFIT_TARGET_PERCENT,
     EXIT_ZSCORE_ABS_TARGET,
-    HARD_EXIT_P_VALUE_CUTOFF,
+    _should_rebase_entry,
     automatic_exit_reason,
     calculate_spot_proxy_mark,
     estimated_p_value_at_prices,
@@ -20,11 +20,12 @@ from app.services.paper_lab_spot_trades import (
     has_reached_exit_target,
     latest_common_session_prices,
     qualifies_for_tracking,
+    remaining_return_to_exit_at_prices,
 )
 
 
-def test_automatic_entry_creation_is_paused():
-    assert AUTOMATIC_ENTRY_CREATION_ENABLED is False
+def test_automatic_entry_creation_is_enabled():
+    assert AUTOMATIC_ENTRY_CREATION_ENABLED is True
 
 
 def _trade() -> PaperLabSpotTrade:
@@ -100,27 +101,64 @@ def test_latest_common_session_prices_uses_shared_open_and_close():
     assert result == (date(2026, 8, 5), 103.0, 78.0, 104.0, 77.0)
 
 
+def test_entry_rebase_only_accepts_a_better_source_for_the_same_session():
+    trade = _trade()
+    trade.entry_price_timestamp = datetime(2026, 8, 11, 3, 45, tzinfo=UTC)
+    trade.entry_price_source = "Yahoo Finance NSE session open (spot proxy fallback)"
+
+    assert not _should_rebase_entry(
+        trade,
+        session_date=date(2026, 8, 10),
+        source="NSE official cash bhavcopy session open (spot proxy)",
+    )
+    assert not _should_rebase_entry(
+        trade,
+        session_date=date(2026, 8, 12),
+        source="Yahoo Finance NSE session open (spot proxy fallback)",
+    )
+    assert not _should_rebase_entry(
+        trade,
+        session_date=date(2026, 8, 11),
+        source=trade.entry_price_source,
+    )
+    assert _should_rebase_entry(
+        trade,
+        session_date=date(2026, 8, 11),
+        source="NSE official cash bhavcopy session open (spot proxy)",
+    )
+
+    trade.entry_price_source = "NSE official cash bhavcopy session open (spot proxy)"
+    assert not _should_rebase_entry(
+        trade,
+        session_date=date(2026, 8, 11),
+        source="another source",
+    )
+
+
 @pytest.mark.parametrize(
-    ("p_value", "kss_statistic", "expected_return_percent", "expected"),
+    ("engle_granger_pass", "kss_pass", "q_value", "entry_type", "expected"),
     [
-        (ENTRY_P_VALUE_CUTOFF, ENTRY_KSS_STATISTIC_CUTOFF, 1.0001, True),
-        (ENTRY_P_VALUE_CUTOFF, ENTRY_KSS_STATISTIC_CUTOFF, 1.0, False),
-        (ENTRY_P_VALUE_CUTOFF, ENTRY_KSS_STATISTIC_CUTOFF, 0.9999, False),
-        (ENTRY_P_VALUE_CUTOFF + 0.000001, -6.0, 2.0, False),
-        (0.00001, ENTRY_KSS_STATISTIC_CUTOFF + 0.01, 2.0, False),
+        (True, True, ENTRY_FDR_Q_CUTOFF, "direct", True),
+        (True, True, ENTRY_FDR_Q_CUTOFF, "confirmed_convergence", True),
+        (False, True, 0.01, "direct", False),
+        (True, False, 0.01, "direct", False),
+        (True, True, ENTRY_FDR_Q_CUTOFF + 0.0001, "direct", False),
+        (True, True, 0.01, None, False),
     ],
 )
-def test_tracking_qualification_uses_strict_expected_return_threshold(
-    p_value: float,
-    kss_statistic: float,
-    expected_return_percent: float,
+def test_tracking_qualification_requires_both_tests_low_q_and_entry_zscore(
+    engle_granger_pass: bool,
+    kss_pass: bool,
+    q_value: float,
+    entry_type: str | None,
     expected: bool,
 ):
     assert (
         qualifies_for_tracking(
-            p_value=p_value,
-            kss_statistic=kss_statistic,
-            expected_return_percent=expected_return_percent,
+            engle_granger_pass=engle_granger_pass,
+            kss_pass=kss_pass,
+            fdr_q_value=q_value,
+            tracker_entry_type=entry_type,
         )
         is expected
     )
@@ -134,6 +172,23 @@ def test_estimated_zscore_scales_the_saved_spread_gap():
         long_price=105.0,
         short_price=80.0,
     ) == pytest.approx(-1.0)
+
+
+def test_remaining_return_is_recomputed_from_actual_entry_prices():
+    trade = _trade()
+
+    result = remaining_return_to_exit_at_prices(
+        trade.suggestion_snapshot,
+        long_ticker=trade.long_ticker,
+        short_ticker=trade.short_ticker,
+        long_units=trade.long_units,
+        short_units=trade.short_units,
+        long_price=105.0,
+        short_price=80.0,
+        current_zscore=-1.0,
+    )
+
+    assert result == pytest.approx(4 / 145 * 100)
 
 
 def test_entry_zscore_is_recomputed_at_actual_open_prices():
@@ -158,61 +213,52 @@ def test_entry_zscore_is_recomputed_at_actual_open_prices():
     assert result == pytest.approx(-3.255, abs=0.001)
 
 
-def test_negative_entry_exits_at_minus_point_one_before_zero():
+def test_negative_entry_exits_at_minus_point_two_before_zero():
     trade = _trade()
 
     not_reached, outside_target = has_reached_exit_target(
         trade,
-        long_price=109.4,
+        long_price=108.9,
         short_price=80.0,
     )
     reached, at_target = has_reached_exit_target(
         trade,
-        long_price=109.5,
+        long_price=109.0,
         short_price=80.0,
     )
 
-    assert EXIT_ZSCORE_ABS_TARGET == 0.1
+    assert EXIT_ZSCORE_ABS_TARGET == 0.2
     assert not_reached is False
-    assert outside_target == pytest.approx(-0.12)
+    assert outside_target == pytest.approx(-0.22)
     assert reached is True
-    assert at_target == pytest.approx(-0.1)
-    assert automatic_exit_reason(trade, p_value=0.0001, zscore=-0.11) is None
+    assert at_target == pytest.approx(-0.2)
+    assert automatic_exit_reason(trade, zscore=-0.21, return_percent=0.5) is None
     assert (
-        automatic_exit_reason(trade, p_value=0.0001, zscore=-0.1)
-        == "zscore_target_0_1"
+        automatic_exit_reason(trade, zscore=-0.2, return_percent=0.5)
+        == "zscore_target_0_2"
     )
 
 
-def test_positive_entry_exits_at_plus_point_one_before_zero():
+def test_positive_entry_exits_at_plus_point_two_before_zero():
     trade = _trade()
     trade.entry_zscore = 1.5
 
-    assert automatic_exit_reason(trade, p_value=0.0001, zscore=0.11) is None
+    assert automatic_exit_reason(trade, zscore=0.21, return_percent=-0.5) is None
     assert (
-        automatic_exit_reason(trade, p_value=0.0001, zscore=0.1)
-        == "zscore_target_0_1"
+        automatic_exit_reason(trade, zscore=0.2, return_percent=-0.5)
+        == "zscore_target_0_2"
     )
 
 
-def test_p_value_hard_exit_takes_precedence_and_has_a_hold_buffer():
+def test_profit_target_exits_without_waiting_for_zscore():
     trade = _trade()
 
-    assert automatic_exit_reason(
-        trade,
-        p_value=ENTRY_P_VALUE_CUTOFF + 0.0001,
-        zscore=-1.0,
-    ) is None
-    assert automatic_exit_reason(
-        trade,
-        p_value=HARD_EXIT_P_VALUE_CUTOFF,
-        zscore=-1.0,
-    ) is None
-    assert automatic_exit_reason(
-        trade,
-        p_value=HARD_EXIT_P_VALUE_CUTOFF + 0.000001,
-        zscore=-1.0,
-    ) == "p_value_above_0_001"
+    assert EXIT_PROFIT_TARGET_PERCENT == 1.25
+    assert automatic_exit_reason(trade, zscore=-1.0, return_percent=1.249) is None
+    assert (
+        automatic_exit_reason(trade, zscore=-1.0, return_percent=1.25)
+        == "profit_target_1_25"
+    )
 
 
 def test_current_p_value_refits_251_prior_closes_plus_live_prices(monkeypatch):

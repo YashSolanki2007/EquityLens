@@ -21,6 +21,7 @@ async def lifespan(app: FastAPI):
     setup_logging(settings.log_level)
     yahoo_stream = get_yahoo_live_stream()
     lab_mark_task = None
+    intraday_copula_task = None
     iv_mark_task = None
     iv_evaluation_task = None
     if settings.yahoo_live_stream_enabled and not settings.upstox_access_token.strip():
@@ -57,6 +58,7 @@ async def lifespan(app: FastAPI):
             # historical scans or the rest of the application from starting.
             logger.warning("Yahoo live stream startup was skipped: %s", exc)
     if settings.app_environment.strip().lower() not in {"prod", "production"}:
+        from app.services.intraday_copula_tracker import run_intraday_copula_recorder
         from app.services.iv_model_evaluation import run_iv_model_evaluation_recorder
         from app.services.market_data.paper_iv_trades import run_paper_iv_mark_recorder
         from app.services.paper_lab_spot_trades import run_spot_mark_recorder
@@ -64,6 +66,10 @@ async def lifespan(app: FastAPI):
         lab_mark_task = asyncio.create_task(
             run_spot_mark_recorder(),
             name="paper-lab-spot-mark-recorder",
+        )
+        intraday_copula_task = asyncio.create_task(
+            run_intraday_copula_recorder(),
+            name="intraday-copula-paper-recorder",
         )
         iv_mark_task = asyncio.create_task(
             run_paper_iv_mark_recorder(),
@@ -77,6 +83,9 @@ async def lifespan(app: FastAPI):
     if lab_mark_task is not None:
         lab_mark_task.cancel()
         await asyncio.gather(lab_mark_task, return_exceptions=True)
+    if intraday_copula_task is not None:
+        intraday_copula_task.cancel()
+        await asyncio.gather(intraday_copula_task, return_exceptions=True)
     if iv_mark_task is not None:
         iv_mark_task.cancel()
         await asyncio.gather(iv_mark_task, return_exceptions=True)

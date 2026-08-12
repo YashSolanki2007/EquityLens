@@ -18,6 +18,7 @@ services:
 
   api:
     profiles: ["full"]
+    restart: unless-stopped
     build:
       context: .
       dockerfile: docker/api.Dockerfile
@@ -28,9 +29,17 @@ services:
       - .env
     ports:
       - "8000:8000"
+    volumes:
+      - ./data/cache:/srv/data/cache
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=5)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

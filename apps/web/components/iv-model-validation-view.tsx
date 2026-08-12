@@ -52,6 +52,7 @@ export function IVModelValidationView() {
   const progress = Math.min(100, data.scored_forecasts / data.evidence_target * 100);
   const fpcaHealthy = (data.average_explained_variance_percent ?? 0) >= data.thresholds.fpca_explained_variance_healthy_percent;
   const varBeatsBaseline = (data.improvement_over_baseline_percent ?? -Infinity) > 0;
+  const historical = data.historical_backtest;
   const collection = run.data?.collection;
 
   return (
@@ -140,6 +141,55 @@ export function IVModelValidationView() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="border-b border-border/70">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-base">Historical option-surface walk-forward test</CardTitle>
+            <Badge variant="outline">{historical.verdict}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-5">
+          <p className="text-sm leading-6 text-muted-foreground">{historical.verdict_detail}</p>
+          {historical.available ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Out-of-sample forecasts</p><p className="mt-2 font-mono text-xl font-semibold">{historical.observations}</p><p className="mt-1 text-[10px] text-muted-foreground">{historical.symbols} stocks · {historical.target_sessions} sessions</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">FPCA–VAR RMSE</p><p className="mt-2 font-mono text-xl font-semibold">{metric(historical.model_rmse)}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">No-change RMSE</p><p className="mt-2 font-mono text-xl font-semibold">{metric(historical.baseline_rmse)}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">RMSE improvement</p><p className="mt-2 font-mono text-xl font-semibold">{metric(historical.improvement_over_baseline_percent, "%")}</p><p className="mt-1 text-[10px] text-muted-foreground">95% CI {metric(historical.improvement_confidence_interval_95?.[0], "%")} to {metric(historical.improvement_confidence_interval_95?.[1], "%")}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Forecast win rate</p><p className="mt-2 font-mono text-xl font-semibold">{metric(historical.model_win_rate_percent, "%")}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Direction accuracy</p><p className="mt-2 font-mono text-xl font-semibold">{metric(historical.directional_accuracy_percent, "%")}</p><p className="mt-1 text-[10px] text-muted-foreground">{historical.meaningful_directional_cells} grid-cell moves</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Variance retained</p><p className="mt-2 font-mono text-xl font-semibold">{metric(historical.average_explained_variance_percent, "%")}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Bootstrap P(model wins)</p><p className="mt-2 font-mono text-xl font-semibold">{metric(historical.bootstrap_probability_model_beats_baseline_percent, "%")}</p></div>
+              </div>
+              <div className="max-h-[360px] overflow-auto rounded-md border border-border/70">
+                <table className="w-full min-w-[760px] text-left text-[11px]">
+                  <thead className="sticky top-0 bg-muted/95 text-muted-foreground backdrop-blur">
+                    <tr>{["Stock", "Tests", "Model RMSE", "No-change RMSE", "Improvement", "Win rate", "Direction"].map((item) => <th key={item} className="px-3 py-2 font-medium">{item}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {(historical.per_symbol ?? []).map((item) => (
+                      <tr key={item.ticker} className="border-t border-border/60">
+                        <td className="px-3 py-2 font-mono font-semibold">{item.ticker}</td>
+                        <td className="px-3 py-2 font-mono">{item.observations}</td>
+                        <td className="px-3 py-2 font-mono">{metric(item.model_rmse)}</td>
+                        <td className="px-3 py-2 font-mono">{metric(item.baseline_rmse)}</td>
+                        <td className="px-3 py-2 font-mono">{metric(item.improvement_over_baseline_percent, "%")}</td>
+                        <td className="px-3 py-2 font-mono">{metric(item.model_win_rate_percent, "%")}</td>
+                        <td className="px-3 py-2 font-mono">{metric(item.directional_accuracy_percent, "%")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-[10px] leading-4 text-muted-foreground">
+                {historical.methodology} Data: {historical.source}. {historical.excluded_for_gaps} candidate forecasts were excluded because their history contained gaps longer than four calendar days. {historical.limitation}
+              </p>
+            </>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="border-b border-border/70"><CardTitle className="text-base">Forecast audit trail</CardTitle></CardHeader>

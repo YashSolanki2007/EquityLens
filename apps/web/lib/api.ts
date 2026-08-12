@@ -750,6 +750,40 @@ export const IVModelEvaluationSchema = z.object({
   model_win_rate_percent: z.number().nullish(),
   verdict: z.string(),
   verdict_detail: z.string(),
+  historical_backtest: z.object({
+    available: z.boolean(),
+    verdict: z.string(),
+    verdict_detail: z.string(),
+    observations: z.number(),
+    symbols: z.number().optional(),
+    target_sessions: z.number().optional(),
+    first_target_date: z.string().optional(),
+    last_target_date: z.string().optional(),
+    excluded_for_gaps: z.number(),
+    model_rmse: z.number().optional(),
+    baseline_rmse: z.number().optional(),
+    improvement_over_baseline_percent: z.number().optional(),
+    improvement_confidence_interval_95: z.array(z.number().nullable()).length(2).optional(),
+    bootstrap_probability_model_beats_baseline_percent: z.number().nullable().optional(),
+    model_win_rate_percent: z.number().optional(),
+    directional_accuracy_percent: z.number().nullable().optional(),
+    meaningful_directional_cells: z.number().optional(),
+    average_explained_variance_percent: z.number().optional(),
+    average_reconstruction_rmse: z.number().optional(),
+    component_counts: z.record(z.string(), z.number()).optional(),
+    per_symbol: z.array(z.object({
+      ticker: z.string(),
+      observations: z.number(),
+      model_rmse: z.number(),
+      baseline_rmse: z.number(),
+      improvement_over_baseline_percent: z.number(),
+      model_win_rate_percent: z.number(),
+      directional_accuracy_percent: z.number().nullable(),
+    })).optional(),
+    source: z.string(),
+    methodology: z.string().optional(),
+    limitation: z.string().optional(),
+  }),
   thresholds: z.object({
     fpca_explained_variance_healthy_percent: z.number(),
     minimum_rmse_improvement_percent: z.number(),
@@ -1070,6 +1104,11 @@ export const PairMethodLabCandidateSchema = z.object({
   ]),
   long_ticker: z.string().nullish(),
   short_ticker: z.string().nullish(),
+  tracker_entry_type: z
+    .enum(["direct", "confirmed_convergence"])
+    .nullish(),
+  tracker_recent_peak_abs_zscore: z.number().nullish(),
+  tracker_remaining_return_percent: z.number().nullish(),
   rolling_windows: z.number(),
   stability_passed_windows: z.number(),
   stability_score_percent: z.number(),
@@ -1132,6 +1171,228 @@ export const PairMethodLabResponseSchema = z.object({
 export type PairMethodLabCandidate = z.infer<typeof PairMethodLabCandidateSchema>;
 export type PairMethodLabResponse = z.infer<typeof PairMethodLabResponseSchema>;
 
+export const CopulaSignalPointSchema = z.object({
+  date: z.string(),
+  h_a_given_b: z.number(),
+  h_b_given_a: z.number(),
+  phase: z.enum(["formation", "trading"]),
+});
+
+export const CopulaPairSignalSchema = z.object({
+  pair_id: z.string(),
+  stock_a: z.string(),
+  stock_a_name: z.string(),
+  stock_b: z.string(),
+  stock_b_name: z.string(),
+  sector: z.string(),
+  engle_granger_p_value: z.number(),
+  fdr_q_value: z.number(),
+  kss_statistic: z.number(),
+  reference_ticker: z.string(),
+  reference_beta_a: z.number(),
+  reference_beta_b: z.number(),
+  reference_kss_a: z.number().nullish(),
+  reference_kss_b: z.number().nullish(),
+  marginal_a: z.enum(["Gaussian", "Student-t", "Cauchy"]),
+  marginal_b: z.enum(["Gaussian", "Student-t", "Cauchy"]),
+  marginal_a_aic: z.number(),
+  marginal_b_aic: z.number(),
+  copula_family: z.enum(["Gaussian", "Student-t", "Clayton", "Frank", "Gumbel"]),
+  copula_parameter: z.number(),
+  copula_degrees_of_freedom: z.number().nullish(),
+  copula_aic: z.number(),
+  kendall_tau: z.number(),
+  h_a_given_b: z.number(),
+  h_b_given_a: z.number(),
+  signal: z.enum([
+    "enter_long_a_short_b",
+    "enter_short_a_long_b",
+    "exit",
+    "watch",
+  ]),
+  long_ticker: z.string().nullish(),
+  short_ticker: z.string().nullish(),
+  long_weight: z.number().nullish(),
+  short_weight: z.number().nullish(),
+  signal_explanation: z.string(),
+  history: z.array(CopulaSignalPointSchema),
+});
+
+export const CopulaPairSignalsResponseSchema = z.object({
+  development_only: z.literal(true),
+  paper_title: z.string(),
+  paper_url: z.string(),
+  reference_ticker: z.string(),
+  universe: z.string(),
+  formation_days: z.number(),
+  trading_days: z.number(),
+  entry_threshold: z.number(),
+  exit_threshold: z.number(),
+  fdr_q_cutoff: z.number(),
+  dual_test_candidates: z.number(),
+  entry_signals: z.number(),
+  exit_signals: z.number(),
+  returned: z.number(),
+  generated_at: z.string(),
+  data_source: z.string(),
+  cached: z.boolean(),
+  results: z.array(CopulaPairSignalSchema),
+  limitations: z.array(z.string()),
+});
+export type CopulaPairSignal = z.infer<typeof CopulaPairSignalSchema>;
+export type CopulaPairSignalsResponse = z.infer<typeof CopulaPairSignalsResponseSchema>;
+
+export const IntradayCopulaHistoryPointSchema = z.object({
+  timestamp: z.string(),
+  h_a_given_b: z.number(),
+  h_b_given_a: z.number(),
+  stock_a_price: z.number(),
+  stock_b_price: z.number(),
+});
+
+export const IntradayCopulaCandidateSchema = z.object({
+  pair_id: z.string(),
+  stock_a: z.string(),
+  stock_a_name: z.string(),
+  stock_b: z.string(),
+  stock_b_name: z.string(),
+  sector: z.string(),
+  engle_granger_p_value: z.number(),
+  fdr_q_value: z.number(),
+  kss_statistic: z.number(),
+  regression_days: z.number(),
+  intraday_sessions: z.number(),
+  formation_bars: z.number(),
+  reference_beta_a: z.number(),
+  reference_beta_b: z.number(),
+  marginal_a: z.enum(["Gaussian", "Student-t", "Cauchy"]),
+  marginal_b: z.enum(["Gaussian", "Student-t", "Cauchy"]),
+  copula_family: z.enum(["Gaussian", "Student-t", "Clayton", "Frank", "Gumbel"]),
+  copula_parameter: z.number(),
+  copula_degrees_of_freedom: z.number().nullish(),
+  copula_aic: z.number(),
+  h_a_given_b: z.number(),
+  h_b_given_a: z.number(),
+  signal: z.enum([
+    "enter_long_a_short_b",
+    "enter_short_a_long_b",
+    "exit",
+    "watch",
+  ]),
+  long_ticker: z.string().nullish(),
+  short_ticker: z.string().nullish(),
+  long_weight: z.number().nullish(),
+  short_weight: z.number().nullish(),
+  stock_a_price: z.number(),
+  stock_b_price: z.number(),
+  session_open_a: z.number(),
+  session_open_b: z.number(),
+  session_open_timestamp: z.string(),
+  latest_bar_end: z.string(),
+  can_enter: z.boolean(),
+  entry_block_reason: z.string().nullish(),
+  history: z.array(IntradayCopulaHistoryPointSchema),
+});
+
+export const IntradayCopulaTradeMarkSchema = z.object({
+  id: z.string().nullish(),
+  long_price: z.number(),
+  short_price: z.number(),
+  long_pnl: z.number(),
+  short_pnl: z.number(),
+  total_pnl: z.number(),
+  return_percent: z.number(),
+  current_gross_notional: z.number(),
+  h_a_given_b: z.number(),
+  h_b_given_a: z.number(),
+  quote_timestamp: z.string(),
+  price_source: z.string(),
+  created_at: z.string(),
+});
+
+export const IntradayCopulaTradeSchema = z.object({
+  id: z.string(),
+  portfolio_id: z.string(),
+  pair_id: z.string(),
+  session_date: z.string(),
+  status: z.enum(["open", "closed"]),
+  stock_a: z.string(),
+  stock_b: z.string(),
+  long_ticker: z.string(),
+  short_ticker: z.string(),
+  long_units: z.number(),
+  short_units: z.number(),
+  entry_long_price: z.number(),
+  entry_short_price: z.number(),
+  entry_long_notional: z.number(),
+  entry_short_notional: z.number(),
+  entry_combined_notional: z.number(),
+  entry_h_a_given_b: z.number(),
+  entry_h_b_given_a: z.number(),
+  entry_q_value: z.number(),
+  entry_kss_statistic: z.number(),
+  copula_family: z.string(),
+  profit_target_percent: z.number(),
+  entry_price_timestamp: z.string(),
+  entry_price_source: z.string(),
+  created_at: z.string(),
+  closed_at: z.string().nullish(),
+  realized_pnl: z.number().nullish(),
+  exit_reason: z.string().nullish(),
+  exit_h_a_given_b: z.number().nullish(),
+  exit_h_b_given_a: z.number().nullish(),
+  latest_mark: IntradayCopulaTradeMarkSchema.nullish(),
+  marks: z.array(IntradayCopulaTradeMarkSchema),
+});
+
+export const IntradayCopulaPendingEntrySchema = z.object({
+  id: z.string(),
+  pair_id: z.string(),
+  signal_session_date: z.string(),
+  status: z.enum(["queued", "entered", "cancelled"]),
+  stock_a: z.string(),
+  stock_b: z.string(),
+  long_ticker: z.string(),
+  short_ticker: z.string(),
+  observed_h_a_given_b: z.number(),
+  observed_h_b_given_a: z.number(),
+  entry_q_value: z.number(),
+  copula_family: z.string(),
+  signal_observed_at: z.string(),
+  entered_trade_id: z.string().nullish(),
+  created_at: z.string(),
+});
+
+export const IntradayCopulaTrackerResponseSchema = z.object({
+  development_only: z.literal(true),
+  bar_minutes: z.number(),
+  daily_regression_days: z.number(),
+  intraday_history_period: z.string(),
+  entry_threshold: z.number(),
+  exit_band_low: z.number(),
+  exit_band_high: z.number(),
+  profit_target_percent: z.number(),
+  entry_start_ist: z.string(),
+  last_entry_ist: z.string(),
+  forced_exit_ist: z.string(),
+  eligible_pairs: z.number(),
+  entry_signals: z.number(),
+  created_trades: z.number(),
+  queued_entries_created: z.number(),
+  generated_at: z.string(),
+  data_source: z.string(),
+  candidates: z.array(IntradayCopulaCandidateSchema),
+  pending_entries: z.array(IntradayCopulaPendingEntrySchema),
+  trades: z.array(IntradayCopulaTradeSchema),
+  limitations: z.array(z.string()),
+});
+
+export type IntradayCopulaCandidate = z.infer<typeof IntradayCopulaCandidateSchema>;
+export type IntradayCopulaPendingEntry = z.infer<typeof IntradayCopulaPendingEntrySchema>;
+export type IntradayCopulaTrade = z.infer<typeof IntradayCopulaTradeSchema>;
+export type IntradayCopulaTradeMark = z.infer<typeof IntradayCopulaTradeMarkSchema>;
+export type IntradayCopulaTrackerResponse = z.infer<typeof IntradayCopulaTrackerResponseSchema>;
+
 export const PaperLabSpotTradeMarkSchema = z.object({
   id: z.string().nullish(),
   long_price: z.number(),
@@ -1172,6 +1433,9 @@ export const PaperLabSpotTradeSchema = z.object({
   entry_q_value: z.number(),
   entry_expected_return_percent: z.number().nullish(),
   formal_entry_signal: z.boolean(),
+  entry_signal_type: z.enum(["direct", "confirmed_convergence", "legacy"]),
+  entry_recent_peak_abs_zscore: z.number().nullish(),
+  entry_remaining_return_percent: z.number().nullish(),
   entry_price_timestamp: z.string(),
   entry_price_source: z.string(),
   created_at: z.string(),
@@ -1253,6 +1517,62 @@ export const PaperPairTradeSchema = z.object({
   valuation_limitation: z.string().nullish(),
 });
 export type PaperPairTrade = z.infer<typeof PaperPairTradeSchema>;
+
+const PaperPairPortfolioPositionSchema = z.object({
+  pair_id: z.string(),
+  long_ticker: z.string(),
+  short_ticker: z.string(),
+  long_units: z.number(),
+  short_units: z.number(),
+  entry_long_price: z.number(),
+  entry_short_price: z.number(),
+  entry_price_date: z.string(),
+  entry_long_notional: z.number(),
+  entry_short_notional: z.number(),
+  allocated_gross_inr: z.number(),
+  hedge_ratio: z.number(),
+  entry_zscore: z.number(),
+  entry_q_value: z.number(),
+  pair_quality_rank: z.number(),
+  mean_abs_correlation_to_portfolio: z.number(),
+});
+
+const PaperPairPortfolioMarkSchema = z.object({
+  date: z.string(),
+  portfolio_value_inr: z.number(),
+  total_pnl_inr: z.number(),
+  return_percent: z.number(),
+  current_gross_notional_inr: z.number(),
+});
+
+export const PaperPairPortfolioSchema = z.object({
+  id: z.string(),
+  owner_portfolio_id: z.string(),
+  status: z.enum(["current", "superseded"]),
+  initial_capital_inr: z.number(),
+  allocated_gross_inr: z.number(),
+  unallocated_cash_inr: z.number(),
+  p_value_threshold: z.number(),
+  entry_price_date: z.string(),
+  entry_price_source: z.string(),
+  positions: z.array(PaperPairPortfolioPositionSchema),
+  marks: z.array(PaperPairPortfolioMarkSchema),
+  selection_summary: z.object({
+    fully_ticker_disjoint: z.boolean(),
+    used_same_side_overlap_fallback: z.boolean(),
+    mean_absolute_pair_correlation: z.number().nullish(),
+    maximum_absolute_pair_correlation: z.number().nullish(),
+    target_pairs: z.number(),
+    selected_pairs: z.number(),
+    unique_companies: z.number(),
+    selection_method: z.string(),
+    per_pair_mean_absolute_correlation: z.record(z.string(), z.number()),
+  }),
+  limitations: z.array(z.string()),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type PaperPairPortfolio = z.infer<typeof PaperPairPortfolioSchema>;
 
 export const MaterializationStatusSchema = z.object({
   state: z.enum(["unknown", "running", "idle", "completed"]),
@@ -1504,6 +1824,20 @@ export const api = {
     request(
       `/api/trade-suggestions/method-lab?limit=${limit}&refresh=${refresh ? "true" : "false"}`
     ).then((d) => PairMethodLabResponseSchema.parse(d)),
+  getCopulaPairSignals: (limit = 24, refresh = false) =>
+    request(
+      `/api/trade-suggestions/method-lab/copula-signals?limit=${limit}&refresh=${refresh ? "true" : "false"}`
+    ).then((d) => CopulaPairSignalsResponseSchema.parse(d)),
+  syncIntradayCopulaTracker: (portfolioId: string) =>
+    request(`/api/trade-suggestions/method-lab/intraday-copula/sync`, {
+      method: "POST",
+      body: JSON.stringify({ portfolio_id: portfolioId }),
+    }).then((d) => IntradayCopulaTrackerResponseSchema.parse(d)),
+  closeIntradayCopulaTrade: (portfolioId: string, tradeId: string) =>
+    request(`/api/trade-suggestions/method-lab/intraday-copula/trades/${tradeId}/close`, {
+      method: "POST",
+      body: JSON.stringify({ portfolio_id: portfolioId }),
+    }).then((d) => IntradayCopulaTradeSchema.parse(d)),
   listPairMethodLabSpotTrades: (portfolioId: string) =>
     request(
       `/api/trade-suggestions/method-lab/paper-trades?portfolio_id=${encodeURIComponent(portfolioId)}`
@@ -1545,6 +1879,28 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ portfolio_id: portfolioId }),
     }).then((d) => PaperPairTradeSchema.parse(d)),
+  getCurrentPairPortfolio: (ownerPortfolioId: string, refresh = true) =>
+    request(
+      `/api/trade-suggestions/pair-portfolios/current?owner_portfolio_id=${encodeURIComponent(ownerPortfolioId)}&refresh=${refresh ? "true" : "false"}`
+    ).then((d) => (d == null ? null : PaperPairPortfolioSchema.parse(d))),
+  createPairPortfolio: (
+    ownerPortfolioId: string,
+    investmentAmountInr: number,
+    pValueThreshold: number
+  ) =>
+    request(`/api/trade-suggestions/pair-portfolios`, {
+      method: "POST",
+      body: JSON.stringify({
+        owner_portfolio_id: ownerPortfolioId,
+        investment_amount_inr: investmentAmountInr,
+        p_value_threshold: pValueThreshold,
+      }),
+    }).then((d) => PaperPairPortfolioSchema.parse(d)),
+  refreshPairPortfolio: (ownerPortfolioId: string) =>
+    request(`/api/trade-suggestions/pair-portfolios/current/refresh`, {
+      method: "POST",
+      body: JSON.stringify({ owner_portfolio_id: ownerPortfolioId }),
+    }).then((d) => PaperPairPortfolioSchema.parse(d)),
   adminStatus: () => request<Record<string, unknown>>(`/api/admin/status`),
   materializationStatus: () =>
     request(`/api/admin/materialization-status`).then((d) =>

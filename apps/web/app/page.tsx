@@ -53,6 +53,14 @@ const WORKSPACES = [
     tone: "bg-emerald-500/10 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-400",
   },
   {
+    href: "/pair-portfolio",
+    label: "Construct",
+    title: "Pair portfolio",
+    description: "Build a low-overlap paper portfolio from active pair-trade signals.",
+    icon: WalletCards,
+    tone: "bg-teal-500/10 text-teal-700 dark:bg-teal-400/10 dark:text-teal-400",
+  },
+  {
     href: "/block-deals",
     label: "Flows",
     title: "Block deals",

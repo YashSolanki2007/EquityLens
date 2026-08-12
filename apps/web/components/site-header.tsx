@@ -8,6 +8,7 @@ import {
   BrainCircuit,
   Building2,
   ChartNoAxesCombined,
+  Clock3,
   Database,
   FlaskConical,
   Handshake,
@@ -17,6 +18,7 @@ import {
   Search,
   ShieldCheck,
   Shuffle,
+  Sigma,
   Sun,
   WalletCards,
 } from "lucide-react";
@@ -46,6 +48,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/technical", label: "Algo scanner", icon: ChartNoAxesCombined, section: "technical" },
       { href: "/trade-suggestions", label: "Pair trades", icon: Shuffle, section: "trade-suggestions" },
+      { href: "/pair-portfolio", label: "Pair portfolio", icon: WalletCards, section: "pair-portfolio" },
       { href: "/trade-tracker", label: "Trade tracker", icon: WalletCards, section: "trade-tracker" },
     ],
   },
@@ -81,6 +84,18 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
               label: "Paper method tracker",
               icon: Activity,
               section: "pair-method-tracker",
+            },
+            {
+              href: "/copula-pair-signals",
+              label: "Copula pair signals",
+              icon: Sigma,
+              section: "copula-pair-signals",
+            },
+            {
+              href: "/intraday-copula-tracker",
+              label: "Intraday copula tracker",
+              icon: Clock3,
+              section: "intraday-copula-tracker",
             },
           ]
         : []),

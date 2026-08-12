@@ -4,10 +4,11 @@ The implementation follows the MetLife paper's sequence:
 
 1. build a daily IV surface on fixed delta and tenor coordinates;
 2. smooth each surface with a tensor-product B-spline;
-3. use FPCA (the discrete Karhunen-Loève decomposition), comparing exact
-   three- and four-component models out of sample; and
-4. forecast differenced component scores with a VAR(5), then reconstruct the
-   next-session surface.
+3. use FPCA (the discrete Karhunen-Loève decomposition), retaining the smallest
+   three-to-eight-component representation that explains at least 99% of the
+   observed surface variation; and
+4. forecast differenced component scores with a regularized VAR(5), then
+   reconstruct the next-session surface.
 
 NSE stock options list fewer tenors than the FX data in the paper, so the
 production grid uses four rolling days-to-expiry points rather than the
@@ -22,7 +23,7 @@ import io
 import logging
 import math
 import zipfile
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -37,8 +38,11 @@ from app.services.nse.client import get_nse_client
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "B-spline FPCA (adaptive 3/4 components) + VAR(5) on differenced scores"
-MODEL_VERSION = "nse-fpca-var5-v10-durable-forecast"
+MODEL_NAME = (
+    "B-spline FPCA (adaptive 3-8 components, 99% variance target) + "
+    "ridge VAR(5) on differenced scores"
+)
+MODEL_VERSION = "nse-fpca-ridge-var5-v11-adaptive99"
 SURFACE_DATA_VERSION = "nse-fpca-var5-v2-durable-history"
 PAPER_URL = (
     "https://investments.metlife.com/content/dam/metlifecom/us/investments/"
@@ -67,7 +71,10 @@ MINIMUM_VALIDATION_SURFACES = MINIMUM_HISTORY_SURFACES + 1
 HISTORY_TTL_SECONDS = 24 * 60 * 60
 FORECAST_TTL_SECONDS = 5 * 60
 MAX_IV_PERCENT = 250.0
-FOURTH_COMPONENT_MINIMUM_RMSE_IMPROVEMENT_PERCENT = 5.0
+MINIMUM_COMPONENT_COUNT = 3
+MAXIMUM_COMPONENT_COUNT = 8
+EXPLAINED_VARIANCE_TARGET_PERCENT = 99.0
+RIDGE_ALPHA_CANDIDATES = (0.1, 1.0, 10.0, 100.0)
 LOT_SIZE_TTL_SECONDS = 24 * 60 * 60
 
 
@@ -312,25 +319,62 @@ def _smooth_surface(surface: np.ndarray) -> np.ndarray:
         return surface.copy()
 
 
-def _var5_forecast(differenced_scores: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """OLS representation of a VAR(5), returning next change and residuals."""
+def _ridge_var5_forecast(
+    differenced_scores: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Regularized VAR(5), returning the next change, residuals and ridge alpha.
+
+    Adding FPCA scores makes an unregularized VAR grow by five predictors per
+    component. Standardizing the score changes and shrinking lag coefficients
+    keeps the 5-8 component models estimable with the available NSE history.
+    The intercept is not penalized. Alpha is selected using the final ten
+    causal one-step validation observations inside the training sample.
+    """
 
     lag_order = 5
     if len(differenced_scores) <= lag_order + 2:
         raise ValueError("At least eight differenced score observations are required.")
+    scale = np.std(differenced_scores, axis=0, ddof=1)
+    scale = np.where(np.isfinite(scale) & (scale > 1e-8), scale, 1.0)
+    standardized = differenced_scores / scale
     predictors = []
     targets = []
-    for index in range(lag_order, len(differenced_scores)):
-        lagged = differenced_scores[index - lag_order : index][::-1].ravel()
+    for index in range(lag_order, len(standardized)):
+        lagged = standardized[index - lag_order : index][::-1].ravel()
         predictors.append(np.concatenate(([1.0], lagged)))
-        targets.append(differenced_scores[index])
+        targets.append(standardized[index])
     x = np.asarray(predictors)
     y = np.asarray(targets)
-    coefficients = np.linalg.lstsq(x, y, rcond=None)[0]
-    residuals = y - x @ coefficients
-    latest = differenced_scores[-lag_order:][::-1].ravel()
-    forecast = np.concatenate(([1.0], latest)) @ coefficients
-    return forecast, residuals
+    penalty = np.eye(x.shape[1])
+    penalty[0, 0] = 0.0
+    validation_start = max(8, len(x) - 10)
+    alpha_losses: list[float] = []
+    for alpha in RIDGE_ALPHA_CANDIDATES:
+        errors = []
+        for target_index in range(validation_start, len(x)):
+            train_x = x[:target_index]
+            train_y = y[:target_index]
+            coefficients = np.linalg.solve(
+                train_x.T @ train_x + alpha * penalty,
+                train_x.T @ train_y,
+            )
+            errors.append(np.mean((y[target_index] - x[target_index] @ coefficients) ** 2))
+        alpha_losses.append(float(np.mean(errors)) if errors else math.inf)
+    selected_alpha = float(
+        RIDGE_ALPHA_CANDIDATES[int(np.argmin(alpha_losses))]
+    )
+    coefficients = np.linalg.solve(
+        x.T @ x + selected_alpha * penalty,
+        x.T @ y,
+    )
+    standardized_residuals = y - x @ coefficients
+    latest = standardized[-lag_order:][::-1].ravel()
+    standardized_forecast = np.concatenate(([1.0], latest)) @ coefficients
+    return (
+        standardized_forecast * scale,
+        standardized_residuals * scale,
+        selected_alpha,
+    )
 
 
 def _fit_fpca_core(
@@ -352,7 +396,7 @@ def _fit_fpca_core(
     scores = centered @ components.T
     reconstruction = mean_surface + scores @ components
     reconstruction_rmse = float(np.sqrt(np.mean((flat - reconstruction) ** 2)))
-    predicted_change, _ = _var5_forecast(np.diff(scores, axis=0))
+    predicted_change, _, ridge_alpha = _ridge_var5_forecast(np.diff(scores, axis=0))
     predicted_scores = scores[-1] + predicted_change
     forecast_flat = mean_surface + predicted_scores @ components
     shape = smoothed.shape[1:]
@@ -362,6 +406,7 @@ def _fit_fpca_core(
         "component_count": component_count,
         "explained_variance_percent": float(cumulative[component_count - 1] * 100),
         "reconstruction_rmse": reconstruction_rmse,
+        "ridge_alpha": ridge_alpha,
     }
 
 
@@ -416,18 +461,22 @@ def _expanding_validation(
 
 
 def _select_component_count(
-    three_component_rmse: float,
-    four_component_rmse: float,
+    cumulative_variance_percent: np.ndarray,
 ) -> tuple[int, float]:
-    if three_component_rmse <= 0:
-        return 3, 0.0
-    improvement_percent = (three_component_rmse - four_component_rmse) / three_component_rmse * 100
-    selected = 4 if improvement_percent >= FOURTH_COMPONENT_MINIMUM_RMSE_IMPROVEMENT_PERCENT else 3
-    return selected, improvement_percent
+    """Return the smallest permitted FPCA model meeting the variance target."""
+
+    maximum = min(MAXIMUM_COMPONENT_COUNT, len(cumulative_variance_percent))
+    if maximum < MINIMUM_COMPONENT_COUNT:
+        raise ValueError("Too few FPCA directions are available for component selection.")
+    for component_count in range(MINIMUM_COMPONENT_COUNT, maximum + 1):
+        retained = float(cumulative_variance_percent[component_count - 1])
+        if retained >= EXPLAINED_VARIANCE_TARGET_PERCENT:
+            return component_count, retained
+    return maximum, float(cumulative_variance_percent[maximum - 1])
 
 
 def fit_fpca_var(surfaces: np.ndarray) -> dict[str, Any]:
-    """Select three or four PCs using expanding one-session forecast errors."""
+    """Retain enough PCs for 99% variance and forecast scores with ridge VAR(5)."""
 
     if surfaces.ndim != 3 or len(surfaces) < MINIMUM_VALIDATION_SURFACES:
         raise ValueError(
@@ -435,19 +484,31 @@ def fit_fpca_var(surfaces: np.ndarray) -> dict[str, Any]:
             "so the model has a one-session-ahead validation observation."
         )
     smoothed = np.asarray([_smooth_surface(surface) for surface in surfaces])
-    three_validation = _expanding_validation(smoothed, 3)
-    four_validation = _expanding_validation(smoothed, 4)
-    selected_count, improvement_percent = _select_component_count(
-        three_validation["aggregate_rmse"],
-        four_validation["aggregate_rmse"],
+    flat = smoothed.reshape(len(smoothed), -1)
+    centered = flat - flat.mean(axis=0)
+    singular_values = np.linalg.svd(centered, full_matrices=False, compute_uv=False)
+    variances = singular_values**2
+    total_variance = float(variances.sum())
+    if total_variance <= 1e-12:
+        raise ValueError("The historical IV surfaces contain no usable variation.")
+    cumulative_variance_percent = np.cumsum(variances) / total_variance * 100
+    selected_count, retained_variance = _select_component_count(
+        cumulative_variance_percent
     )
-    selected_validation = four_validation if selected_count == 4 else three_validation
+    validations = {
+        component_count: _expanding_validation(smoothed, component_count)
+        for component_count in range(
+            MINIMUM_COMPONENT_COUNT,
+            min(MAXIMUM_COMPONENT_COUNT, flat.shape[1]) + 1,
+        )
+    }
+    selected_validation = validations[selected_count]
     result = _fit_fpca_core(smoothed, selected_count)
     result["rmse_surface"] = selected_validation["rmse_surface"]
     result["validation_sessions"] = selected_validation["validation_sessions"]
     result["validation_rmse_by_components"] = {
-        "3": round(three_validation["aggregate_rmse"], 4),
-        "4": round(four_validation["aggregate_rmse"], 4),
+        str(component_count): round(validation["aggregate_rmse"], 4)
+        for component_count, validation in validations.items()
     }
     result["validation_baseline_rmse"] = round(
         selected_validation["baseline_rmse"], 4
@@ -460,32 +521,20 @@ def fit_fpca_var(surfaces: np.ndarray) -> dict[str, Any]:
         if selected_validation["directional_accuracy_percent"] is not None
         else None
     )
-    result["fourth_component_improvement_percent"] = round(
-        improvement_percent,
-        2,
+    result["fourth_component_improvement_percent"] = None
+    target_status = (
+        "meeting"
+        if retained_variance >= EXPLAINED_VARIANCE_TARGET_PERCENT
+        else "falling short of"
     )
-    if selected_count == 4:
-        result["component_selection_note"] = (
-            "Four components selected: the fourth reduced expanding-window "
-            f"one-session RMSE by {improvement_percent:.1f}% "
-            f"({three_validation['aggregate_rmse']:.2f} to "
-            f"{four_validation['aggregate_rmse']:.2f} volatility points)."
-        )
-    elif improvement_percent >= 0:
-        result["component_selection_note"] = (
-            "Three components retained: the fourth reduced validation RMSE by only "
-            f"{improvement_percent:.1f}%, below the "
-            f"{FOURTH_COMPONENT_MINIMUM_RMSE_IMPROVEMENT_PERCENT:.0f}% requirement "
-            f"({three_validation['aggregate_rmse']:.2f} versus "
-            f"{four_validation['aggregate_rmse']:.2f} volatility points)."
-        )
-    else:
-        result["component_selection_note"] = (
-            "Three components retained: the fourth worsened validation RMSE by "
-            f"{abs(improvement_percent):.1f}% "
-            f"({three_validation['aggregate_rmse']:.2f} versus "
-            f"{four_validation['aggregate_rmse']:.2f} volatility points)."
-        )
+    result["component_selection_note"] = (
+        f"{selected_count} components retained, {target_status} the "
+        f"{EXPLAINED_VARIANCE_TARGET_PERCENT:.0f}% target with "
+        f"{retained_variance:.2f}% explained variance. Ridge VAR(5) alpha "
+        f"{result['ridge_alpha']:g} was selected causally; expanding-window "
+        f"one-session RMSE is {selected_validation['aggregate_rmse']:.2f} versus "
+        f"{selected_validation['baseline_rmse']:.2f} for no change."
+    )
     return result
 
 
@@ -509,8 +558,11 @@ def _read_bhavcopy_surface(content: bytes, symbol: str, report_date: date) -> np
     return surface_from_bhavcopy(frame, symbol, report_date)
 
 
-def _candidate_dates() -> list[date]:
-    current = datetime.now(ZoneInfo("Asia/Kolkata")).date() - timedelta(days=1)
+def _candidate_dates(*, now: datetime | None = None) -> list[date]:
+    now_ist = (now or datetime.now(UTC)).astimezone(ZoneInfo("Asia/Kolkata"))
+    current = now_ist.date()
+    if now_ist.time() < time(18, 0):
+        current -= timedelta(days=1)
     values = []
     while len(values) < CANDIDATE_WEEKDAYS:
         if current.weekday() < 5:
@@ -556,25 +608,9 @@ async def load_historical_surfaces(
     if cached is not None:
         return list(cached["dates"]), np.asarray(cached["surfaces"], dtype=float)
 
-    dated_surfaces: list[tuple[date, np.ndarray]] = []
-    candidate_dates = _candidate_dates()
-    # The shared NSE client enforces the configured exchange request rate.
-    for start in range(0, CANDIDATE_WEEKDAYS, 4):
-        batch_dates = candidate_dates[start : start + 4]
-        batch = await asyncio.gather(
-            *[_historical_surface_for_date(symbol, value) for value in batch_dates]
-        )
-        dated_surfaces.extend(
-            (value, surface)
-            for value, surface in zip(batch_dates, batch, strict=True)
-            if surface is not None
-        )
-        if len(dated_surfaces) >= TARGET_HISTORY_SURFACES:
-            break
-
     # A temporarily illiquid far expiry must not erase already verified daily
-    # surfaces. Merge the new exchange download with the last successful cache
-    # before retaining the most recent TARGET_HISTORY_SURFACES observations.
+    # surfaces. Seed the refresh with the last verified cache, download only
+    # missing sessions, then retain the newest TARGET_HISTORY_SURFACES values.
     merged_surfaces: dict[date, np.ndarray] = {}
     for cached_date, cached_surface in zip(
         stale_payload.get("dates") or [],
@@ -588,8 +624,21 @@ async def load_historical_surfaces(
             continue
         if parsed_surface.shape == (len(TENOR_DAYS), len(DELTA_BUCKETS)):
             merged_surfaces[parsed_date] = parsed_surface
-    for surface_date, surface in dated_surfaces:
-        merged_surfaces[surface_date] = surface
+    candidate_dates = [
+        value for value in _candidate_dates() if value not in merged_surfaces
+    ]
+    # The shared NSE client enforces the configured exchange request rate.
+    for start in range(0, len(candidate_dates), 4):
+        batch_dates = candidate_dates[start : start + 4]
+        batch = await asyncio.gather(
+            *[_historical_surface_for_date(symbol, value) for value in batch_dates]
+        )
+        for surface_date, surface in zip(batch_dates, batch, strict=True):
+            if surface is not None:
+                merged_surfaces[surface_date] = surface
+        if len(merged_surfaces) >= TARGET_HISTORY_SURFACES:
+            break
+
     dated_surfaces = sorted(merged_surfaces.items(), key=lambda item: item[0])
     if len(dated_surfaces) > TARGET_HISTORY_SURFACES:
         dated_surfaces = dated_surfaces[-TARGET_HISTORY_SURFACES:]
@@ -1904,7 +1953,7 @@ def _unavailable_forecast(
         "validation_rmse_by_components": {},
         "fourth_component_improvement_percent": None,
         "component_selection_note": (
-            "Three-versus-four component selection could not be evaluated."
+            "Adaptive 3-8 component selection could not be evaluated."
         ),
         "comparisons": [],
         "strategy": _empty_strategy(

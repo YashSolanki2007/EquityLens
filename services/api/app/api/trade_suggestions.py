@@ -10,7 +10,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import get_db
-from app.models import PaperLabSpotTrade, PaperPairTrade
+from app.models import PaperIntradayCopulaTrade, PaperLabSpotTrade, PaperPairTrade
+from app.schemas.copula_pair_signals import CopulaPairSignalsResponse
+from app.schemas.intraday_copula_tracker import (
+    IntradayCopulaTrackerResponse,
+    IntradayCopulaTrackerSync,
+    IntradayCopulaTradeOut,
+)
 from app.schemas.pair_method_lab import (
     PairMethodLabResponse,
     PaperLabSpotTradeClose,
@@ -20,6 +26,9 @@ from app.schemas.pair_method_lab import (
 )
 from app.schemas.pairs import (
     PairSuggestionsResponse,
+    PaperPairPortfolioCreate,
+    PaperPairPortfolioOut,
+    PaperPairPortfolioRefresh,
     PaperPairTradeClose,
     PaperPairTradeCreate,
     PaperPairTradeOut,
@@ -54,6 +63,73 @@ async def pair_method_lab(
     from app.services.pair_method_lab import get_pair_method_lab
 
     return await get_pair_method_lab(db, limit=limit, refresh=refresh)
+
+
+@router.get(
+    "/method-lab/copula-signals",
+    response_model=CopulaPairSignalsResponse,
+    include_in_schema=False,
+)
+async def copula_pair_signals(
+    limit: int = Query(default=24, ge=1, le=160),
+    refresh: bool = False,
+    db: AsyncSession = Depends(get_db),
+):
+    """Development-only copula signals for strict dual-test pair candidates."""
+
+    _require_development()
+    from app.services.copula_pair_signals import get_copula_pair_signals
+
+    return await get_copula_pair_signals(db, limit=limit, refresh=refresh)
+
+
+@router.post(
+    "/method-lab/intraday-copula/sync",
+    response_model=IntradayCopulaTrackerResponse,
+    include_in_schema=False,
+)
+async def sync_intraday_copula_tracker(
+    body: IntradayCopulaTrackerSync,
+    db: AsyncSession = Depends(get_db),
+):
+    """Scan the latest completed five-minute bars and advance paper trades."""
+
+    _require_development()
+    from app.services.intraday_copula_tracker import sync_intraday_copula_tracker
+
+    return await sync_intraday_copula_tracker(db, body.portfolio_id)
+
+
+@router.post(
+    "/method-lab/intraday-copula/trades/{trade_id}/close",
+    response_model=IntradayCopulaTradeOut,
+    include_in_schema=False,
+)
+async def close_intraday_copula_trade(
+    trade_id: UUID,
+    body: IntradayCopulaTrackerSync,
+    db: AsyncSession = Depends(get_db),
+):
+    _require_development()
+    from app.services.intraday_copula_tracker import (
+        close_intraday_copula_trade,
+        intraday_trade_marks,
+        intraday_trade_response,
+    )
+
+    trade = (
+        await db.execute(
+            select(PaperIntradayCopulaTrade).where(
+                PaperIntradayCopulaTrade.id == trade_id,
+                PaperIntradayCopulaTrade.portfolio_id == body.portfolio_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if trade is None:
+        raise HTTPException(status_code=404, detail="Unknown intraday copula trade.")
+    if trade.status == "open":
+        await close_intraday_copula_trade(db, trade)
+    return intraday_trade_response(trade, await intraday_trade_marks(db, trade.id))
 
 
 def _require_development() -> None:
@@ -197,6 +273,82 @@ async def list_trade_suggestions(
         refresh=refresh,
         p_value_threshold=p_value_threshold,
     )
+
+
+@router.get(
+    "/pair-portfolios/current",
+    response_model=PaperPairPortfolioOut | None,
+)
+async def get_current_pair_portfolio(
+    owner_portfolio_id: UUID,
+    refresh: bool = True,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.pair_portfolios import (
+        current_portfolio,
+        portfolio_response,
+        refresh_portfolio_marks,
+    )
+
+    portfolio = await current_portfolio(db, owner_portfolio_id)
+    if portfolio is None:
+        return None
+    if refresh:
+        await refresh_portfolio_marks(portfolio)
+        await db.commit()
+    return portfolio_response(portfolio)
+
+
+@router.post(
+    "/pair-portfolios",
+    response_model=PaperPairPortfolioOut,
+    status_code=201,
+)
+async def construct_pair_portfolio(
+    body: PaperPairPortfolioCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.pair_portfolios import create_portfolio, portfolio_response
+
+    scan = await get_pair_suggestions(
+        db,
+        limit=200,
+        refresh=False,
+        p_value_threshold=body.p_value_threshold,
+    )
+    try:
+        portfolio = await create_portfolio(
+            db,
+            body.owner_portfolio_id,
+            body.investment_amount_inr,
+            body.p_value_threshold,
+            scan.results,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return portfolio_response(portfolio)
+
+
+@router.post(
+    "/pair-portfolios/current/refresh",
+    response_model=PaperPairPortfolioOut,
+)
+async def refresh_current_pair_portfolio(
+    body: PaperPairPortfolioRefresh,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.pair_portfolios import (
+        current_portfolio,
+        portfolio_response,
+        refresh_portfolio_marks,
+    )
+
+    portfolio = await current_portfolio(db, body.owner_portfolio_id)
+    if portfolio is None:
+        raise HTTPException(status_code=404, detail="No pair portfolio has been built yet.")
+    await refresh_portfolio_marks(portfolio)
+    await db.commit()
+    return portfolio_response(portfolio)
 
 
 @router.post(

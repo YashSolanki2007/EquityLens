@@ -10,4 +10,4 @@ COPY data data
 COPY scripts scripts
 
 WORKDIR /srv/services/api
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
