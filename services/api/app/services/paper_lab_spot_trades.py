@@ -25,8 +25,12 @@ from app.schemas.pair_method_lab import PairMethodLabCandidate
 from app.services.nse.client import get_nse_client
 from app.services.pair_method_lab import (
     FORMATION_DAYS,
-    KSS_CRITICAL_VALUE_0_01_PERCENT_RESIDUAL,
     MAX_RESULTS_TO_CACHE,
+    TRACKER_CONFIRMED_MIN_ABS_ZSCORE,
+    TRACKER_ENTRY_ZSCORE_ABS_THRESHOLD,
+    TRACKER_EXIT_ZSCORE_ABS_TARGET,
+    TRACKER_FDR_Q_CUTOFF,
+    TRACKER_MIN_REMAINING_RETURN_PERCENT,
     _engle_granger,
     get_pair_method_lab,
 )
@@ -35,13 +39,12 @@ from app.services.yahoo_live import LiveQuote, get_yahoo_live_stream
 
 INDIA_TZ = ZoneInfo("Asia/Kolkata")
 MINIMUM_MARK_INTERVAL = timedelta(seconds=45)
-MIN_TRACKING_EXPECTED_RETURN_PERCENT = 1.0
-ENTRY_P_VALUE_CUTOFF = 0.0001
-HARD_EXIT_P_VALUE_CUTOFF = 0.001
-EXIT_ZSCORE_ABS_TARGET = 0.1
-ENTRY_KSS_STATISTIC_CUTOFF = KSS_CRITICAL_VALUE_0_01_PERCENT_RESIDUAL
+ENTRY_ZSCORE_ABS_THRESHOLD = TRACKER_ENTRY_ZSCORE_ABS_THRESHOLD
+ENTRY_FDR_Q_CUTOFF = TRACKER_FDR_Q_CUTOFF
+EXIT_ZSCORE_ABS_TARGET = TRACKER_EXIT_ZSCORE_ABS_TARGET
+EXIT_PROFIT_TARGET_PERCENT = 1.25
 P_VALUE_HISTORY_CACHE_TTL = timedelta(minutes=15)
-AUTOMATIC_ENTRY_CREATION_ENABLED = False
+AUTOMATIC_ENTRY_CREATION_ENABLED = True
 logger = logging.getLogger(__name__)
 
 _daily_p_value_cache_at: datetime | None = None
@@ -51,39 +54,38 @@ _daily_p_value_cache = pd.DataFrame()
 
 def qualifies_for_tracking(
     *,
-    p_value: float,
-    kss_statistic: float,
-    expected_return_percent: float,
+    engle_granger_pass: bool,
+    kss_pass: bool,
+    fdr_q_value: float,
+    tracker_entry_type: str | None,
 ) -> bool:
     """Return whether a scan observation qualifies as a new tracked entry."""
 
     return (
-        p_value <= ENTRY_P_VALUE_CUTOFF
-        and kss_statistic <= ENTRY_KSS_STATISTIC_CUTOFF
-        and expected_return_percent > MIN_TRACKING_EXPECTED_RETURN_PERCENT
+        engle_granger_pass
+        and kss_pass
+        and math.isfinite(fdr_q_value)
+        and fdr_q_value <= ENTRY_FDR_Q_CUTOFF
+        and tracker_entry_type in {"direct", "confirmed_convergence"}
     )
 
 
 def automatic_exit_reason(
     trade: PaperLabSpotTrade,
     *,
-    p_value: float | None,
     zscore: float | None,
+    return_percent: float,
 ) -> str | None:
-    """Apply the hard p-value stop before the ordinary mean-reversion exit."""
+    """Exit at the first observed Z-score or paper-profit target."""
 
-    if (
-        p_value is not None
-        and math.isfinite(p_value)
-        and p_value > HARD_EXIT_P_VALUE_CUTOFF
-    ):
-        return "p_value_above_0_001"
+    if math.isfinite(return_percent) and return_percent >= EXIT_PROFIT_TARGET_PERCENT:
+        return "profit_target_1_25"
     if zscore is None or not math.isfinite(zscore):
         return None
     if (trade.entry_zscore > 0 and zscore <= EXIT_ZSCORE_ABS_TARGET) or (
         trade.entry_zscore < 0 and zscore >= -EXIT_ZSCORE_ABS_TARGET
     ):
-        return "zscore_target_0_1"
+        return "zscore_target_0_2"
     return None
 
 
@@ -144,6 +146,47 @@ def estimated_zscore_from_snapshot(
     )
     zscore = base_zscore * current_gap / base_gap
     return zscore if math.isfinite(zscore) else None
+
+
+def remaining_return_to_exit_at_prices(
+    snapshot: dict[str, Any],
+    *,
+    long_ticker: str,
+    short_ticker: str,
+    long_units: float,
+    short_units: float,
+    long_price: float,
+    short_price: float,
+    current_zscore: float,
+) -> float | None:
+    """Estimate gross return still available from actual entry to |Z| = 0.2."""
+
+    try:
+        stock_a = str(snapshot["stock_a"])
+        stock_b = str(snapshot["stock_b"])
+        base_price_a = float(snapshot["latest_price_a"])
+        base_price_b = float(snapshot["latest_price_b"])
+        base_gap = float(snapshot["spread_gap_to_mean"])
+        beta = float(snapshot["hedge_ratio"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    prices = {long_ticker: long_price, short_ticker: short_price}
+    if stock_a not in prices or stock_b not in prices:
+        return None
+    current_gap = (
+        base_gap
+        + (prices[stock_a] - base_price_a)
+        - beta * (prices[stock_b] - base_price_b)
+    )
+    current_abs_z = abs(current_zscore)
+    gross_notional = long_units * long_price + short_units * short_price
+    if current_abs_z <= 0 or gross_notional <= 0:
+        return None
+    remaining_gap = abs(current_gap) * (
+        max(current_abs_z - EXIT_ZSCORE_ABS_TARGET, 0.0) / current_abs_z
+    )
+    result = remaining_gap / gross_notional * 100
+    return result if math.isfinite(result) else None
 
 
 def has_reached_exit_target(
@@ -506,10 +549,27 @@ def _entry_source(
     return "Yahoo Finance NSE session open (spot proxy fallback)"
 
 
+def _should_rebase_entry(
+    trade: PaperLabSpotTrade,
+    *,
+    session_date: date,
+    source: str,
+) -> bool:
+    """Only replace a provisional entry with a better source for the same session."""
+
+    entry_date = trade.entry_price_timestamp.astimezone(INDIA_TZ).date()
+    if session_date != entry_date:
+        return False
+    if trade.entry_price_source.startswith("NSE official cash bhavcopy session open"):
+        return False
+    return trade.entry_price_source != source
+
+
 def _candidate_entry(
     candidate: PairMethodLabCandidate,
     session_prices: tuple[date, float, float, float, float],
     price_source: str,
+    entry_signal_type: str,
 ) -> tuple[dict[str, Any], float, float]:
     # One theoretical hedge unit is 1 share of A against beta shares of B. Using
     # fractional units keeps the tracked percentage faithful to the fitted spread.
@@ -532,7 +592,10 @@ def _candidate_entry(
         long_price, short_price = price_b, price_a
         current_long_price, current_short_price = current_b, current_a
 
-    snapshot = candidate.model_dump(mode="json")
+    snapshot = {
+        **candidate.model_dump(mode="json"),
+        "tracking_entry_type": entry_signal_type,
+    }
     entry_zscore = estimated_zscore_from_snapshot(
         snapshot,
         long_ticker=long_ticker,
@@ -543,6 +606,17 @@ def _candidate_entry(
     )
     if entry_zscore is None:
         entry_zscore = candidate.current_zscore
+    entry_remaining_return = remaining_return_to_exit_at_prices(
+        snapshot,
+        long_ticker=long_ticker,
+        short_ticker=short_ticker,
+        long_units=long_units,
+        short_units=short_units,
+        long_price=long_price,
+        short_price=short_price,
+        current_zscore=entry_zscore,
+    )
+    snapshot["tracking_entry_remaining_return_percent"] = entry_remaining_return
 
     return {
         "pair_id": candidate.pair_id,
@@ -564,7 +638,7 @@ def _candidate_entry(
         "entry_expected_return_percent": (
             candidate.potential_convergence_return_percent
         ),
-        "formal_entry_signal": abs(candidate.current_zscore) >= 2,
+        "formal_entry_signal": entry_signal_type == "direct",
         "entry_price_timestamp": price_timestamp,
         "entry_price_source": price_source,
         "suggestion_snapshot": snapshot,
@@ -627,17 +701,23 @@ async def sync_dual_test_spot_trades(
         return 0, 0
 
     lab = await get_pair_method_lab(db, limit=MAX_RESULTS_TO_CACHE, refresh=False)
-    eligible = [
-        candidate
-        for candidate in lab.results
-        if qualifies_for_tracking(
-            p_value=candidate.engle_granger_p_value,
-            kss_statistic=candidate.kss_statistic,
-            expected_return_percent=(
-                candidate.potential_convergence_return_percent
-            ),
-        )
-    ]
+    eligible = sorted(
+        (
+            candidate
+            for candidate in lab.results
+            if qualifies_for_tracking(
+                engle_granger_pass=candidate.engle_granger_pass,
+                kss_pass=candidate.kss_pass,
+                fdr_q_value=candidate.fdr_q_value,
+                tracker_entry_type=candidate.tracker_entry_type,
+            )
+        ),
+        key=lambda candidate: (
+            candidate.fdr_q_value,
+            -abs(candidate.current_zscore),
+            candidate.pair_id,
+        ),
+    )
     existing_trades = list(
         (
             await db.execute(
@@ -688,14 +768,11 @@ async def sync_dual_test_spot_trades(
             official_date,
             official_tickers,
         )
-        already_official_open = trade.entry_price_source.startswith(
-            "NSE official cash bhavcopy session open"
-        )
-        same_open = (
-            trade.entry_price_timestamp.astimezone(INDIA_TZ).date() == session_date
-            and trade.entry_price_source == source
-        )
-        if already_official_open or same_open:
+        if not _should_rebase_entry(
+            trade,
+            session_date=session_date,
+            source=source,
+        ):
             continue
         await db.execute(
             delete(PaperLabSpotTradeMark).where(
@@ -762,7 +839,25 @@ async def sync_dual_test_spot_trades(
             candidate,
             session,
             source,
+            candidate.tracker_entry_type or "direct",
         )
+        actual_abs_z = abs(float(entry["entry_zscore"]))
+        actual_remaining_return = entry["suggestion_snapshot"].get(
+            "tracking_entry_remaining_return_percent"
+        )
+        if candidate.tracker_entry_type == "direct" and (
+            actual_abs_z < ENTRY_ZSCORE_ABS_THRESHOLD
+        ):
+            continue
+        if candidate.tracker_entry_type == "confirmed_convergence" and not (
+            entry["entry_zscore"] * candidate.current_zscore > 0
+            and TRACKER_CONFIRMED_MIN_ABS_ZSCORE
+            <= actual_abs_z
+            < ENTRY_ZSCORE_ABS_THRESHOLD
+            and actual_remaining_return is not None
+            and actual_remaining_return >= TRACKER_MIN_REMAINING_RETURN_PERCENT
+        ):
+            continue
         trade = PaperLabSpotTrade(portfolio_id=portfolio_id, **entry)
         db.add(trade)
         await db.flush()
@@ -841,8 +936,8 @@ async def backfill_intraday_spot_marks(
             )
             reason = automatic_exit_reason(
                 trade,
-                p_value=p_value,
                 zscore=exit_zscore,
+                return_percent=mark.return_percent,
             )
             if reason is not None:
                 trade.status = "closed"
@@ -884,8 +979,8 @@ async def backfill_intraday_spot_marks(
             )
             reason = automatic_exit_reason(
                 trade,
-                p_value=p_value,
                 zscore=exit_zscore,
+                return_percent=values["return_percent"],
             )
             if reason is not None:
                 trade.status = "closed"
@@ -905,7 +1000,7 @@ async def close_zero_crossed_live_trades(
     db: AsyncSession,
     trades: list[PaperLabSpotTrade],
 ) -> int:
-    """Apply the live p-value stop and near-zero Z exit about once per minute."""
+    """Apply the live profit and near-zero Z exits about once per minute."""
 
     closed = 0
     tickers = {
@@ -927,8 +1022,8 @@ async def close_zero_crossed_live_trades(
         )
         reason = automatic_exit_reason(
             trade,
-            p_value=values["estimated_p_value"],
             zscore=exit_zscore,
+            return_percent=values["return_percent"],
         )
         if reason is None:
             continue
@@ -1023,7 +1118,10 @@ async def list_spot_trades(
             await db.execute(
                 select(PaperLabSpotTrade)
                 .where(PaperLabSpotTrade.portfolio_id == portfolio_id)
-                .order_by(PaperLabSpotTrade.created_at.desc())
+                .order_by(
+                    PaperLabSpotTrade.entry_q_value.asc(),
+                    PaperLabSpotTrade.created_at.desc(),
+                )
             )
         )
         .scalars()
@@ -1127,6 +1225,19 @@ def spot_trade_response(
         "entry_q_value": trade.entry_q_value,
         "entry_expected_return_percent": trade.entry_expected_return_percent,
         "formal_entry_signal": trade.formal_entry_signal,
+        "entry_signal_type": (trade.suggestion_snapshot or {}).get(
+            "tracking_entry_type",
+            "legacy",
+        ),
+        "entry_recent_peak_abs_zscore": (trade.suggestion_snapshot or {}).get(
+            "tracker_recent_peak_abs_zscore"
+        ),
+        "entry_remaining_return_percent": (trade.suggestion_snapshot or {}).get(
+            "tracking_entry_remaining_return_percent",
+            (trade.suggestion_snapshot or {}).get(
+                "tracker_remaining_return_percent"
+            ),
+        ),
         "entry_price_timestamp": trade.entry_price_timestamp,
         "entry_price_source": trade.entry_price_source,
         "created_at": trade.created_at,
@@ -1145,6 +1256,8 @@ def spot_trade_response(
 async def close_spot_trade(
     db: AsyncSession,
     trade: PaperLabSpotTrade,
+    *,
+    exit_reason: str = "manual",
 ) -> None:
     daily_closes = await _daily_p_value_history(
         {trade.long_ticker, trade.short_ticker}
@@ -1169,7 +1282,7 @@ async def close_spot_trade(
         trade.realized_pnl = latest.total_pnl
     trade.status = "closed"
     trade.closed_at = datetime.now(UTC)
-    trade.exit_reason = "manual"
+    trade.exit_reason = exit_reason
     if values is not None:
         trade.exit_zscore = estimated_zscore_at_prices(
             trade,
@@ -1183,34 +1296,45 @@ async def close_spot_trade(
 
 
 async def run_spot_mark_recorder() -> None:
-    """Backfill each completed 15-minute bar while the API is running."""
+    """Continuously sync entries and apply exits while the API is running."""
 
     last_backfill_bucket: datetime | None = None
     while True:
         try:
             async with get_session_factory()() as db:
-                trades = list(
-                    (
-                        await db.execute(
-                            select(PaperLabSpotTrade).where(
-                                PaperLabSpotTrade.status == "open"
+                now = datetime.now(INDIA_TZ)
+                bucket = now.replace(
+                    minute=now.minute // 15 * 15,
+                    second=0,
+                    microsecond=0,
+                )
+                if bucket != last_backfill_bucket:
+                    portfolio_ids = list(
+                        (
+                            await db.execute(
+                                select(PaperLabSpotTrade.portfolio_id).distinct()
                             )
                         )
+                        .scalars()
+                        .all()
                     )
-                    .scalars()
-                    .all()
-                )
-                if trades:
-                    now = datetime.now(INDIA_TZ)
-                    bucket = now.replace(
-                        minute=now.minute // 15 * 15,
-                        second=0,
-                        microsecond=0,
+                    for portfolio_id in portfolio_ids:
+                        await sync_dual_test_spot_trades(db, portfolio_id)
+                    last_backfill_bucket = bucket
+                else:
+                    trades = list(
+                        (
+                            await db.execute(
+                                select(PaperLabSpotTrade).where(
+                                    PaperLabSpotTrade.status == "open"
+                                )
+                            )
+                        )
+                        .scalars()
+                        .all()
                     )
-                    if bucket != last_backfill_bucket:
-                        await backfill_intraday_spot_marks(db, trades)
-                        last_backfill_bucket = bucket
-                    await close_zero_crossed_live_trades(db, trades)
+                    if trades:
+                        await close_zero_crossed_live_trades(db, trades)
         except asyncio.CancelledError:
             raise
         except Exception:

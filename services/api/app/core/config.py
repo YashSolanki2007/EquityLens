@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     nvidia_api_key: str = ""
     nvidia_model: str = "meta/llama-3.3-70b-instruct"
 
+    # Dedicated company-page conversation and research model. This can use a
+    # separate development key without changing the general extraction/planning model.
+    company_chat_nvidia_api_key: str = ""
+    company_chat_nvidia_model: str = "nvidia/nemotron-3-ultra-550b-a55b"
+    company_chat_reasoning_budget: int = 2_048
+
     # Current-news retrieval for follow-up deep research. The semantic stock-search
     # pipeline does not use this service.
     tavily_base_url: str = "https://api.tavily.com"

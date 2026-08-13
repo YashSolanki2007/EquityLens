@@ -151,10 +151,15 @@ class OpenAICompatProvider(LLMProvider):
         base_url: str | None = None,
         api_key: str | None = None,
         model: str | None = None,
+        *,
+        enable_thinking: bool = False,
+        reasoning_budget: int | None = None,
     ):
         s = get_settings()
         self.base_url = (base_url or s.nvidia_base_url).rstrip("/")
         self.model_name = model or s.nvidia_model
+        self.enable_thinking = enable_thinking
+        self.reasoning_budget = reasoning_budget
         self._client = httpx.AsyncClient(
             base_url=self.base_url,
             headers={"Authorization": f"Bearer {api_key or s.nvidia_api_key}"},
@@ -193,9 +198,14 @@ class OpenAICompatProvider(LLMProvider):
         payload: dict = {
             "model": self.model_name,
             "messages": list(messages),
-            "temperature": temperature,
-            "max_tokens": max_tokens or 4096,
+            "temperature": 1.0 if self.enable_thinking else temperature,
+            # NVIDIA's own Nemotron sample uses an 8K completion ceiling. A forced
+            # 16K ceiling made short structured chat requests needlessly slow.
+            "max_tokens": max_tokens or (8_192 if self.enable_thinking else 4_096),
         }
+        if self.enable_thinking:
+            payload["chat_template_kwargs"] = {"enable_thinking": True}
+            payload["reasoning_budget"] = self.reasoning_budget or 8_192
         if json_schema is not None:
             # NVIDIA NIM structured output; harmlessly ignored elsewhere. The prompt
             # below also spells out the schema for models without guided decoding.
@@ -231,6 +241,7 @@ class OpenAICompatProvider(LLMProvider):
 
 
 _provider: LLMProvider | None = None
+_company_chat_providers: dict[bool, LLMProvider] = {}
 
 
 def get_provider() -> LLMProvider:
@@ -244,10 +255,69 @@ def get_provider() -> LLMProvider:
     return _provider
 
 
+def get_company_chat_provider(*, reasoning: bool = False) -> LLMProvider:
+    """Return the specialist company-chat model without changing global generation."""
+
+    provider = _company_chat_providers.get(reasoning)
+    if provider is not None:
+        return provider
+
+    settings = get_settings()
+    api_key = settings.company_chat_nvidia_api_key or settings.nvidia_api_key
+    if api_key:
+        provider = OpenAICompatProvider(
+            base_url=settings.nvidia_base_url,
+            api_key=api_key,
+            model=settings.company_chat_nvidia_model,
+            enable_thinking=reasoning,
+            reasoning_budget=(
+                settings.company_chat_reasoning_budget if reasoning else None
+            ),
+        )
+    else:
+        provider = get_provider()
+    _company_chat_providers[reasoning] = provider
+    return provider
+
+
 def set_provider(provider: LLMProvider | None) -> None:
     """Override the provider (tests use a fake)."""
     global _provider
     _provider = provider
+
+
+def set_company_chat_provider(
+    provider: LLMProvider | None,
+    *,
+    reasoning: bool = False,
+) -> None:
+    """Override or reset the specialist provider (primarily for tests)."""
+
+    if provider is None:
+        _company_chat_providers.pop(reasoning, None)
+    else:
+        _company_chat_providers[reasoning] = provider
+
+
+async def close_providers() -> None:
+    """Close every initialized provider exactly once during application shutdown."""
+
+    global _provider
+    providers = [
+        provider
+        for provider in [_provider, *_company_chat_providers.values()]
+        if provider is not None
+    ]
+    seen: set[int] = set()
+    for provider in providers:
+        if id(provider) in seen:
+            continue
+        seen.add(id(provider))
+        aclose = getattr(provider, "aclose", None)
+        if aclose:
+            await aclose()
+    _provider = None
+    _company_chat_providers.clear()
 
 
 def _extract_json(text: str) -> str:

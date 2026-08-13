@@ -33,6 +33,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { api, type PaperLabSpotTrade, type PaperLabSpotTradeMark } from "@/lib/api";
 import { type LiveQuote, useLiveQuotes } from "@/lib/use-live-quotes";
 
@@ -222,14 +228,6 @@ function TradeCard({
     current?.estimated_zscore ?? trade.live_mark?.estimated_zscore ?? trade.latest_mark?.estimated_zscore;
   const currentEstimatedP =
     current?.estimated_p_value ?? trade.live_mark?.estimated_p_value ?? trade.latest_mark?.estimated_p_value;
-  const pValueStatus =
-    currentEstimatedP == null
-      ? "Current p unavailable"
-      : currentEstimatedP <= 0.0001
-        ? "Entry-grade significance"
-        : currentEstimatedP <= 0.001
-          ? "Hold zone—above entry cutoff"
-          : "Hard-exit threshold breached";
   const hasLive = Boolean(websocketMark ?? trade.live_mark);
   return (
     <Card>
@@ -252,7 +250,16 @@ function TradeCard({
               {(trade.entry_expected_return_percent ?? 0).toFixed(2)}% modelled full-convergence return
             </Badge>
             <Badge variant="outline">Entry BH q {testProbability(trade.entry_q_value)}</Badge>
-            {trade.formal_entry_signal ? <Badge variant="secondary">Formal ±2σ signal</Badge> : null}
+            {trade.entry_signal_type === "direct" ? (
+              <Badge variant="secondary">Direct |Z| ≥ 1.7 entry</Badge>
+            ) : trade.entry_signal_type === "confirmed_convergence" ? (
+              <Badge
+                variant="outline"
+                className="border-emerald-700/30 text-emerald-700 dark:text-emerald-400"
+              >
+                Confirmed convergence entry
+              </Badge>
+            ) : null}
             {hasLive ? (
               <Badge variant="outline" className="border-emerald-700/30 text-emerald-700 dark:text-emerald-400">
                 <Wifi className="size-3" /> Live spot
@@ -378,17 +385,21 @@ function TradeCard({
               Entry raw p {testProbability(trade.entry_p_value)} · BH q {testProbability(trade.entry_q_value)} · KSS t {trade.entry_kss_statistic.toFixed(3)} · expected return {(trade.entry_expected_return_percent ?? 0).toFixed(3)}%
             </p>
             <p>
-              New-entry rules are raw p ≤ 0.0001, KSS t ≤ −5.04 and expected return &gt; 1%. Existing historical observations are preserved; the BH q-value is displayed for comparison and does not admit, reject or size a trade.
+              New-entry rules require Engle–Granger pass, KSS pass and BH q ≤ 0.05. Direct entries use |Z| ≥ 1.7; confirmed entries require a recent 1.7 peak, three falling same-sign observations, at least a 0.30 and 20% contraction, current |Z| ≥ 0.6, and at least 1.50% remaining return to the exit band.
             </p>
+            {trade.entry_signal_type === "confirmed_convergence" ? (
+              <p className="font-mono">
+                Armed peak |Z| {trade.entry_recent_peak_abs_zscore?.toFixed(3) ?? "—"} · projected remaining return {trade.entry_remaining_return_percent?.toFixed(3) ?? "—"}%
+              </p>
+            ) : null}
             <p className="font-mono">
-              Actual entry Z {trade.entry_zscore.toFixed(3)}σ · latest estimated Z {currentEstimatedZ == null ? "unavailable" : `${currentEstimatedZ.toFixed(3)}σ`} · automatic exit at |Z| ≤ 0.1
+              Actual entry Z {trade.entry_zscore.toFixed(3)}σ · latest estimated Z {currentEstimatedZ == null ? "unavailable" : `${currentEstimatedZ.toFixed(3)}σ`} · exits at |Z| ≤ 0.2 or return ≥ +1.25%
             </p>
             <p>
-              Actual entry Z is calculated at the saved opening prices using the frozen hedge ratio, spread mean and scale. A trade entered below zero closes at −0.1σ; one entered above zero closes at +0.1σ.
+              Actual entry Z is calculated at the saved opening prices using the frozen hedge ratio, spread mean and scale. The first observed Z-score or profit target closes the paper trade.
             </p>
             <p className="font-mono">
-              Latest raw p {currentEstimatedP == null ? "unavailable" : testProbability(currentEstimatedP)}
-              {" · "}{pValueStatus}{" · "}hard exit if p &gt; 0.001
+              Latest raw p {currentEstimatedP == null ? "unavailable" : testProbability(currentEstimatedP)} · informational after entry
             </p>
             {current ? (
               <p>
@@ -399,7 +410,7 @@ function TradeCard({
             )}
             {trade.closed_at ? (
               <p className="font-medium text-foreground">
-                Closed {timestamp(trade.closed_at)} · {trade.exit_reason === "zscore_target_0_1" ? "spread reached the |Z| ≤ 0.1 exit band automatically" : trade.exit_reason === "zscore_zero" ? "spread reached/crossed Z = 0 automatically under the previous rule" : trade.exit_reason === "p_value_above_0_001" ? "raw p exceeded 0.001 hard limit automatically" : "closed manually"}
+                Closed {timestamp(trade.closed_at)} · {trade.exit_reason === "zscore_target_0_2" ? "spread reached the |Z| ≤ 0.2 exit band automatically" : trade.exit_reason === "profit_target_1_25" ? "paper return reached +1.25% automatically" : trade.exit_reason === "strategy_reset" ? "closed for the strategy reset" : trade.exit_reason === "zscore_target_0_1" ? "spread reached the previous |Z| ≤ 0.1 exit band" : trade.exit_reason === "zscore_zero" ? "spread reached/crossed Z = 0 under the previous rule" : trade.exit_reason === "p_value_above_0_001" ? "raw p exceeded the previous 0.001 hard limit" : "closed manually"}
                 {trade.exit_zscore != null ? ` · estimated exit Z ${trade.exit_zscore.toFixed(3)}σ` : ""}
                 {trade.exit_p_value != null ? ` · exit p ${testProbability(trade.exit_p_value)}` : ""}
               </p>
@@ -459,7 +470,6 @@ export function PairLabPaperTracker() {
     onSuccess: () => trades.refetch(),
   });
   const syncTrades = sync.mutate;
-  const saveMarks = mark.mutate;
 
   useEffect(() => {
     if (!portfolioId) return;
@@ -471,12 +481,23 @@ export function PairLabPaperTracker() {
 
   useEffect(() => {
     if (!portfolioId) return;
-    const interval = window.setInterval(() => saveMarks(), 15 * 60_000);
+    const interval = window.setInterval(() => syncTrades(), 15 * 60_000);
     return () => window.clearInterval(interval);
-  }, [portfolioId, saveMarks]);
+  }, [portfolioId, syncTrades]);
 
   const allTrades = useMemo(() => trades.data ?? [], [trades.data]);
   const openTrades = allTrades.filter((trade) => trade.status === "open");
+  const closedTrades = useMemo(
+    () =>
+      allTrades
+        .filter((trade) => trade.status === "closed")
+        .sort(
+          (left, right) =>
+            new Date(right.closed_at ?? right.created_at).getTime() -
+            new Date(left.closed_at ?? left.created_at).getTime()
+        ),
+    [allTrades]
+  );
   const tickers = useMemo(
     () => openTrades.flatMap((trade) => [trade.long_ticker, trade.short_ticker]),
     [openTrades]
@@ -492,13 +513,11 @@ export function PairLabPaperTracker() {
   );
   const openPortfolioReturn =
     openGrossEntry > 0 ? (openPortfolioPnl / openGrossEntry) * 100 : 0;
-  const closedPortfolioPnl = allTrades
-    .filter((trade) => trade.status === "closed")
-    .reduce(
-      (sum, trade) =>
-        sum + (trade.realized_pnl ?? trade.latest_mark?.total_pnl ?? 0),
-      0
-    );
+  const closedPortfolioPnl = closedTrades.reduce(
+    (sum, trade) =>
+      sum + (trade.realized_pnl ?? trade.latest_mark?.total_pnl ?? 0),
+    0
+  );
   const allTradesPnl = openPortfolioPnl + closedPortfolioPnl;
   const allTradesGrossEntry = allTrades.reduce(
     (sum, trade) => sum + trade.entry_combined_notional,
@@ -514,17 +533,16 @@ export function PairLabPaperTracker() {
         <div className="flex flex-col gap-4 border-b border-border/70 p-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="page-eyebrow flex items-center gap-2">
-              <Activity className="size-3.5" /> Existing observations only
+              <Activity className="size-3.5" /> Automatic pair lifecycle
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-[-0.045em] sm:text-[2.5rem]">
               Paper-method spot-proxy portfolio
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">
-              New paper-trade creation is paused. This page only continues tracking the original
-              observations already in the database; refreshing or rerunning the scanner will not
-              add another pair. Existing positions still close automatically when the fitted
-              spread reaches the near-zero |Z| ≤ 0.1 exit band or when their refitted raw p-value exceeds 0.001,
-              and their complete 15-minute history remains stored.
+              Every 15 minutes, the tracker checks both direct |Z| ≥ 1.7 signals and pairs that
+              recently crossed 1.7 and are now converging with at least 1.50% projected return
+              remaining. Both cohorts require Engle–Granger, KSS and BH q ≤ 0.05. Stock-price
+              proxies close at |Z| ≤ 0.2 or +1.25%, whichever is observed first.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -547,7 +565,7 @@ export function PairLabPaperTracker() {
         <div className="grid gap-px bg-border/70 sm:grid-cols-2 lg:grid-cols-5">
           {[
             { value: openTrades.length, label: "Open observations" },
-            { value: allTrades.filter((trade) => trade.exit_reason === "zscore_target_0_1" || trade.exit_reason === "zscore_zero" || trade.exit_reason === "p_value_above_0_001").length, label: "Automatic rule exits" },
+            { value: allTrades.filter((trade) => trade.exit_reason === "zscore_target_0_2" || trade.exit_reason === "profit_target_1_25" || trade.exit_reason === "zscore_target_0_1" || trade.exit_reason === "zscore_zero" || trade.exit_reason === "p_value_above_0_001").length, label: "Automatic rule exits" },
             { value: moneyFormatter.format(openGrossEntry), label: "Open gross entry notional" },
             {
               value: signedPercent(openPortfolioReturn),
@@ -580,11 +598,10 @@ export function PairLabPaperTracker() {
             This is a research proxy, not an executable cash-market strategy: the short stock
             leg cannot be held overnight in the normal Indian cash market. Fractional hedge
             units preserve the fitted raw-price ratio. P&amp;L excludes futures basis, lot sizing,
-            brokerage, taxes, borrow availability, slippage and financing. The &gt;1% entry metric
-            is a conditional gross return if the spread reaches its fitted mean; it is not a
-            probability-weighted forecast or guarantee. Automatic exits are checked against
-            completed 15-minute bars and approximately once per minute using available live quotes.
-            A refitted p-value between 0.0001 and 0.001 remains open; a value above 0.001 is a hard exit.
+            brokerage, taxes, borrow availability, slippage and financing. Automatic exits are
+            checked against completed 15-minute bars and approximately once per minute using
+            available live quotes. The q ≤ 0.05 gate applies only when opening a new observation;
+            after entry, only the Z-score and +1.25% profit targets close it automatically.
           </p>
         </div>
       </div>
@@ -603,28 +620,71 @@ export function PairLabPaperTracker() {
             </p>
           </CardContent>
         </Card>
-      ) : allTrades.length === 0 ? (
-        <Card>
-          <CardContent className="py-8">
-            <p className="font-semibold">There are no existing observations to display.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Automatic entry creation is paused. No new pair will be added until it is explicitly
-              enabled again; any closed historical trades will remain stored and visible here.
-            </p>
-          </CardContent>
-        </Card>
       ) : (
-        <div className="space-y-4">
-          {allTrades.map((trade) => (
-            <TradeCard
-              key={trade.id}
-              trade={trade}
-              quotes={quotes}
-              closing={close.isPending && close.variables === trade.id}
-              onClose={() => close.mutate(trade.id)}
-            />
-          ))}
-        </div>
+        <Tabs defaultValue="open" className="space-y-4">
+          <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1 sm:w-auto">
+            <TabsTrigger value="open" className="gap-2 px-4 py-2">
+              Open trades
+              <Badge variant="secondary" className="min-w-6 justify-center px-1.5 font-mono">
+                {openTrades.length}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="closed" className="gap-2 px-4 py-2">
+              Closed trades
+              <Badge variant="secondary" className="min-w-6 justify-center px-1.5 font-mono">
+                {closedTrades.length}
+              </Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="open" className="space-y-4">
+            {openTrades.length === 0 ? (
+              <Card>
+                <CardContent className="py-8">
+                  <p className="font-semibold">There are no open trades right now.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    The automatic scan will add a direct |Z| ≥ 1.7 trade or a qualified
+                    confirmed-convergence trade when both tests pass and BH q ≤ 0.05.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              openTrades.map((trade) => (
+                <TradeCard
+                  key={trade.id}
+                  trade={trade}
+                  quotes={quotes}
+                  closing={close.isPending && close.variables === trade.id}
+                  onClose={() => close.mutate(trade.id)}
+                />
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="closed" className="space-y-4">
+            {closedTrades.length === 0 ? (
+              <Card>
+                <CardContent className="py-8">
+                  <p className="font-semibold">There are no closed trades yet.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Trades will move here when they reach an automatic exit or are closed
+                    manually.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              closedTrades.map((trade) => (
+                <TradeCard
+                  key={trade.id}
+                  trade={trade}
+                  quotes={quotes}
+                  closing={false}
+                  onClose={() => undefined}
+                />
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
       )}
     </section>
   );

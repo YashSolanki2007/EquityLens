@@ -22,13 +22,17 @@ HISTORY_TTL_SECONDS = 30 * 60
 OPTION_TTL_SECONDS = 5 * 60
 GREEKS_RISK_FREE_RATE = 0.065
 GREEKS_DIVIDEND_YIELD = 0.0
-HistoryRange = Literal["1M", "3M", "6M", "1Y", "5Y", "MAX"]
+HistoryRange = Literal["1M", "3M", "6M", "1Y", "5Y", "10Y", "FULL_DAILY", "MAX"]
 HISTORY_PARAMETERS: dict[HistoryRange, tuple[str, str]] = {
     "1M": ("1mo", "1d"),
     "3M": ("3mo", "1d"),
     "6M": ("6mo", "1d"),
     "1Y": ("1y", "1d"),
     "5Y": ("5y", "1d"),
+    "10Y": ("10y", "1d"),
+    # Internal research range. Unlike the chart-facing MAX range, this keeps
+    # daily observations so long-memory path features have a genuine pre-sample.
+    "FULL_DAILY": ("max", "1d"),
     "MAX": ("max", "1wk"),
 }
 

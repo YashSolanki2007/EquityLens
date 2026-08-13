@@ -1,3 +1,5 @@
+import io
+import zipfile
 from datetime import UTC, date, datetime, timedelta
 
 import numpy as np
@@ -7,8 +9,15 @@ import pytest
 from app.schemas.trading import IVSurfaceForecastOut
 from app.services.market_data.iv_surface import (
     DELTA_BUCKETS,
+    EXPLAINED_VARIANCE_TARGET_PERCENT,
+    MAXIMUM_COMPONENT_COUNT,
+    MINIMUM_COMPONENT_COUNT,
+    RIDGE_ALPHA_CANDIDATES,
     TENOR_DAYS,
+    _backfill_dates,
     _black_scholes_price,
+    _candidate_dates,
+    _normalize_bhavcopy_frame,
     _parse_market_lot_sizes,
     _select_component_count,
     build_iv_strategies,
@@ -99,10 +108,13 @@ def test_fpca_var_forecast_retains_components_and_returns_error_surface():
 
     assert result["forecast_surface"].shape == (4, 5)
     assert result["rmse_surface"].shape == (4, 5)
-    assert result["component_count"] in {3, 4}
-    assert result["explained_variance_percent"] >= 99
+    assert MINIMUM_COMPONENT_COUNT <= result["component_count"] <= MAXIMUM_COMPONENT_COUNT
+    assert result["explained_variance_percent"] >= EXPLAINED_VARIANCE_TARGET_PERCENT
     assert result["validation_sessions"] == 10
-    assert set(result["validation_rmse_by_components"]) == {"3", "4"}
+    assert set(result["validation_rmse_by_components"]) == {
+        str(value) for value in range(MINIMUM_COMPONENT_COUNT, MAXIMUM_COMPONENT_COUNT + 1)
+    }
+    assert result["ridge_alpha"] in RIDGE_ALPHA_CANDIDATES
     assert result["reconstruction_rmse"] >= 0
     assert result["validation_baseline_rmse"] >= 0
     assert np.isfinite(result["validation_improvement_over_baseline_percent"])
@@ -121,18 +133,81 @@ def test_fpca_requires_a_surface_after_the_training_minimum_for_validation():
     assert result["validation_sessions"] == 1
 
 
-def test_fourth_component_requires_five_percent_validation_improvement():
-    selected, improvement = _select_component_count(2.0, 1.89)
-    assert selected == 4
-    assert round(improvement, 1) == 5.5
+def test_history_candidates_include_same_day_only_after_bhavcopy_window():
+    before_publish = _candidate_dates(
+        now=datetime(2026, 8, 11, 10, 0, tzinfo=UTC)
+    )
+    after_publish = _candidate_dates(
+        now=datetime(2026, 8, 11, 13, 0, tzinfo=UTC)
+    )
 
-    selected, improvement = _select_component_count(2.0, 1.91)
-    assert selected == 3
-    assert round(improvement, 1) == 4.5
+    assert before_publish[0] == date(2026, 8, 10)
+    assert after_publish[0] == date(2026, 8, 11)
 
-    selected, improvement = _select_component_count(2.0, 2.1)
-    assert selected == 3
-    assert round(improvement, 1) == -5.0
+
+def test_ten_year_backfill_dates_cover_the_full_weekday_history():
+    values = _backfill_dates(
+        years=10,
+        now=datetime(2026, 8, 13, 12, 0, tzinfo=UTC),
+    )
+
+    assert values[0] == date(2016, 8, 15)
+    assert values[-1] == date(2026, 8, 13)
+    assert len(values) > 2_600
+    assert all(value.weekday() < 5 for value in values)
+
+
+def test_legacy_bhavcopy_is_normalized_with_historical_underlying_close():
+    legacy = (
+        "INSTRUMENT,SYMBOL,EXPIRY_DT,STRIKE_PR,OPTION_TYP,CLOSE,CONTRACTS,OPEN_INT\n"
+        "OPTSTK,TEST,26-AUG-2021,100,CE,5.25,100,5000\n"
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("fo13AUG2021bhav.csv", legacy)
+
+    frame, source = _normalize_bhavcopy_frame(
+        buffer.getvalue(),
+        spot_by_symbol={"TEST": 98.5},
+    )
+
+    assert source == "NSE legacy F&O bhavcopy"
+    assert frame.loc[0, "FinInstrmTp"] == "STO"
+    assert frame.loc[0, "TckrSymb"] == "TEST"
+    assert frame.loc[0, "UndrlygPric"] == 98.5
+    assert frame.loc[0, "TtlTradgVol"] == 100
+
+
+def test_early_legacy_bhavcopy_optiontype_alias_is_supported():
+    legacy = (
+        "INSTRUMENT,SYMBOL,EXPIRY_DT,STRIKE_PR,OPTIONTYPE,CLOSE,CONTRACTS,OPEN_INT\n"
+        "OPTSTK,TEST,31-AUG-2006,100,PE,4.75,80,3000\n"
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("fo14AUG2006bhav.csv", legacy)
+
+    frame, source = _normalize_bhavcopy_frame(
+        buffer.getvalue(),
+        spot_by_symbol={"TEST": 101.0},
+    )
+
+    assert source == "NSE legacy F&O bhavcopy"
+    assert frame.loc[0, "OptnTp"] == "PE"
+
+
+def test_component_selection_uses_smallest_model_reaching_99_percent():
+    selected, retained = _select_component_count(
+        np.asarray([60, 85, 93, 97, 98.7, 99.3, 99.7, 99.9])
+    )
+    assert selected == 6
+    assert retained == 99.3
+
+    selected, retained = _select_component_count(
+        np.asarray([60, 85, 93, 97, 98.0, 98.4, 98.7, 98.9])
+    )
+    assert selected == MAXIMUM_COMPONENT_COUNT
+    assert retained == 98.9
 
 
 def test_market_lot_file_is_parsed_by_expiry_month():

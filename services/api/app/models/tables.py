@@ -528,6 +528,48 @@ class PaperPairTradeMark(Base):
     trade: Mapped[PaperPairTrade] = relationship(back_populates="marks")
 
 
+class PaperPairPortfolio(Base):
+    """A versioned, stock-price proxy portfolio built from pair suggestions."""
+
+    __tablename__ = "paper_pair_portfolios"
+    __table_args__ = (
+        Index(
+            "uq_paper_pair_portfolios_current_owner",
+            "owner_portfolio_id",
+            unique=True,
+            postgresql_where=text("status = 'current'"),
+        ),
+        Index(
+            "ix_paper_pair_portfolios_owner_created",
+            "owner_portfolio_id",
+            "created_at",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    owner_portfolio_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), index=True
+    )
+    status: Mapped[str] = mapped_column(String(16), default="current", index=True)
+    initial_capital_inr: Mapped[float] = mapped_column(Float)
+    allocated_gross_inr: Mapped[float] = mapped_column(Float)
+    p_value_threshold: Mapped[float] = mapped_column(Float)
+    entry_price_date: Mapped[date] = mapped_column(Date)
+    entry_price_source: Mapped[str] = mapped_column(String(128))
+    positions: Mapped[list] = mapped_column(JSONB)
+    marks: Mapped[list] = mapped_column(JSONB)
+    selection_summary: Mapped[dict] = mapped_column(JSONB)
+    limitations: Mapped[list] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
 class PaperLabSpotTrade(Base):
     """Development-only spot proxy for a dual-test pair-method observation."""
 
@@ -620,3 +662,167 @@ class PaperLabSpotTradeMark(Base):
     )
 
     trade: Mapped[PaperLabSpotTrade] = relationship(back_populates="marks")
+
+
+class PaperIntradayCopulaTrackerSubscription(Base):
+    """A browser portfolio enrolled in the background five-minute scan."""
+
+    __tablename__ = "paper_intraday_copula_tracker_subscriptions"
+
+    portfolio_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    last_synced_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class PaperIntradayCopulaPendingEntry(Base):
+    """A copula entry observed after cutoff and held for the next NSE open."""
+
+    __tablename__ = "paper_intraday_copula_pending_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "portfolio_id",
+            "pair_id",
+            "signal_session_date",
+            name="uq_intraday_copula_pending_portfolio_pair_session",
+        ),
+        Index(
+            "ix_intraday_copula_pending_portfolio_status",
+            "portfolio_id",
+            "status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    portfolio_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    pair_id: Mapped[str] = mapped_column(String(32), index=True)
+    signal_session_date: Mapped[date] = mapped_column(Date, index=True)
+    status: Mapped[str] = mapped_column(String(16), default="queued", index=True)
+    stock_a: Mapped[str] = mapped_column(String(24))
+    stock_b: Mapped[str] = mapped_column(String(24))
+    long_ticker: Mapped[str] = mapped_column(String(24))
+    short_ticker: Mapped[str] = mapped_column(String(24))
+    long_weight: Mapped[float] = mapped_column(Float)
+    short_weight: Mapped[float] = mapped_column(Float)
+    observed_h_a_given_b: Mapped[float] = mapped_column(Float)
+    observed_h_b_given_a: Mapped[float] = mapped_column(Float)
+    entry_q_value: Mapped[float] = mapped_column(Float)
+    entry_kss_statistic: Mapped[float] = mapped_column(Float)
+    copula_family: Mapped[str] = mapped_column(String(24))
+    signal_observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    signal_snapshot: Mapped[dict] = mapped_column(JSONB)
+    entered_trade_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("paper_intraday_copula_trades.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+
+class PaperIntradayCopulaTrade(Base):
+    """Development-only five-minute cash-equity copula observation."""
+
+    __tablename__ = "paper_intraday_copula_trades"
+    __table_args__ = (
+        UniqueConstraint(
+            "portfolio_id",
+            "pair_id",
+            "session_date",
+            name="uq_intraday_copula_trade_portfolio_pair_session",
+        ),
+        Index(
+            "ix_intraday_copula_trades_portfolio_status",
+            "portfolio_id",
+            "status",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    portfolio_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    pair_id: Mapped[str] = mapped_column(String(32), index=True)
+    session_date: Mapped[date] = mapped_column(Date, index=True)
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)
+    stock_a: Mapped[str] = mapped_column(String(24))
+    stock_b: Mapped[str] = mapped_column(String(24))
+    long_ticker: Mapped[str] = mapped_column(String(24))
+    short_ticker: Mapped[str] = mapped_column(String(24))
+    long_units: Mapped[float] = mapped_column(Float)
+    short_units: Mapped[float] = mapped_column(Float)
+    entry_long_price: Mapped[float] = mapped_column(Float)
+    entry_short_price: Mapped[float] = mapped_column(Float)
+    entry_long_notional: Mapped[float] = mapped_column(Float)
+    entry_short_notional: Mapped[float] = mapped_column(Float)
+    entry_combined_notional: Mapped[float] = mapped_column(Float)
+    entry_h_a_given_b: Mapped[float] = mapped_column(Float)
+    entry_h_b_given_a: Mapped[float] = mapped_column(Float)
+    entry_q_value: Mapped[float] = mapped_column(Float)
+    entry_kss_statistic: Mapped[float] = mapped_column(Float)
+    copula_family: Mapped[str] = mapped_column(String(24))
+    profit_target_percent: Mapped[float] = mapped_column(Float, default=0.5)
+    entry_price_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    entry_price_source: Mapped[str] = mapped_column(String(128))
+    signal_snapshot: Mapped[dict] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    realized_pnl: Mapped[float | None] = mapped_column(Float)
+    exit_reason: Mapped[str | None] = mapped_column(String(64))
+    exit_h_a_given_b: Mapped[float | None] = mapped_column(Float)
+    exit_h_b_given_a: Mapped[float | None] = mapped_column(Float)
+
+    marks: Mapped[list["PaperIntradayCopulaTradeMark"]] = relationship(
+        back_populates="trade",
+        cascade="all, delete-orphan",
+    )
+
+
+class PaperIntradayCopulaTradeMark(Base):
+    __tablename__ = "paper_intraday_copula_trade_marks"
+    __table_args__ = (
+        UniqueConstraint(
+            "trade_id",
+            "quote_timestamp",
+            name="uq_intraday_copula_trade_mark_timestamp",
+        ),
+        Index(
+            "ix_intraday_copula_trade_marks_trade_timestamp",
+            "trade_id",
+            "quote_timestamp",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    trade_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("paper_intraday_copula_trades.id"), index=True
+    )
+    long_price: Mapped[float] = mapped_column(Float)
+    short_price: Mapped[float] = mapped_column(Float)
+    long_pnl: Mapped[float] = mapped_column(Float)
+    short_pnl: Mapped[float] = mapped_column(Float)
+    total_pnl: Mapped[float] = mapped_column(Float)
+    return_percent: Mapped[float] = mapped_column(Float)
+    current_gross_notional: Mapped[float] = mapped_column(Float)
+    h_a_given_b: Mapped[float] = mapped_column(Float)
+    h_b_given_a: Mapped[float] = mapped_column(Float)
+    quote_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    price_source: Mapped[str] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    trade: Mapped[PaperIntradayCopulaTrade] = relationship(back_populates="marks")

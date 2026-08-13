@@ -4,6 +4,7 @@ import json
 from datetime import date
 
 import httpx
+import pytest
 
 from app.models import Company
 from app.schemas.search import Citation
@@ -12,6 +13,9 @@ from app.services.research.deep_research import (
     EvidenceClaim,
     EvidenceRecord,
     _format_report,
+    _summarize_price_window,
+    is_price_move_research_question,
+    requested_lookback_days,
     resolve_target_tickers,
 )
 from app.services.research.news import TavilyNewsClient, parse_tavily_results
@@ -33,6 +37,49 @@ class TestTargetResolution:
             ["VRT", "DELL", "HPE"],
             max_companies=3,
         ) == ["VRT"]
+
+
+def test_exact_recent_window_and_price_move_question_are_detected():
+    question = "In the past five days, what caused the decline in the stock price?"
+
+    assert requested_lookback_days(question) == 5
+    assert is_price_move_research_question(question)
+    assert requested_lookback_days("Why has it fallen over the past few days?") == 7
+
+
+def test_price_window_summary_confirms_observed_move(monkeypatch):
+    monkeypatch.setattr("app.services.research.deep_research.date", _FixedDate)
+    history = {
+        "currency": "INR",
+        "source_url": "https://example.com/history",
+        "retrieved_at": "2026-08-13T10:00:00Z",
+        "is_delayed_or_unverified": True,
+        "candles": [
+            {"time": "2026-08-07", "close": 110, "volume": 90},
+            {"time": "2026-08-10", "close": 108, "volume": 100},
+            {"time": "2026-08-11", "close": 104, "volume": 120},
+            {"time": "2026-08-12", "close": 103, "volume": 110},
+            {"time": "2026-08-13", "close": 100, "volume": 150},
+        ],
+    }
+
+    result = _summarize_price_window(history, 5)
+
+    assert result is not None
+    text, citation = result
+    payload = json.loads(text)
+    assert payload["requested_calendar_window"]["start"] == "2026-08-08"
+    assert payload["available_trading_window"]["trading_sessions"] == 4
+    assert payload["observed_direction"] == "decline"
+    assert payload["available_trading_window"]["reference_close_date"] == "2026-08-07"
+    assert payload["observed_change_percent"] == pytest.approx(-9.0909)
+    assert citation.source_type == "market_data"
+
+
+class _FixedDate(date):
+    @classmethod
+    def today(cls):
+        return cls(2026, 8, 13)
 
     def test_ordinal_result_reference(self):
         assert resolve_target_tickers(
@@ -193,3 +240,57 @@ def test_report_only_returns_citations_used_by_synthesis():
     assert "Input costs could rise. [1]" in answer
     assert "[99]" not in answer
     assert [citation.url for citation in citations] == ["https://example.com/used"]
+
+
+def test_price_move_report_always_states_measured_move_and_attaches_source():
+    company = Company(
+        ticker="TEST",
+        name="Test Limited",
+        cik="0000000001",
+        exchange="NSE",
+        sector="Industrials",
+        industry="Machinery",
+    )
+    price_payload = {
+        "observed_change_percent": -9.0909,
+        "available_trading_window": {
+            "reference_close_date": "2026-08-07",
+            "first_session": "2026-08-10",
+            "last_session": "2026-08-13",
+            "trading_sessions": 4,
+        },
+    }
+    evidence = [
+        EvidenceRecord(
+            index=1,
+            source_type="market_data",
+            title="Observed share-price move over the requested 5-day window",
+            text=json.dumps(price_payload),
+            citation=Citation(
+                source_type="market_data",
+                url="https://example.com/history",
+                description="Historical closes",
+            ),
+        )
+    ]
+    synthesis = DeepResearchSynthesis(
+        direction="unclear",
+        magnitude="unclear",
+        confidence="low",
+        executive_summary="No single cause was established.",
+        impact_mechanisms=[],
+        counterevidence=[],
+        watch_items=[],
+        evidence_boundary="Price data was available, but causal evidence was limited.",
+    )
+
+    answer, citations = _format_report(
+        company,
+        "What caused the stock-price decline over the past five days?",
+        synthesis,
+        evidence,
+    )
+
+    assert "Observed move: -9.09%" in answer
+    assert "[1]" in answer
+    assert [citation.url for citation in citations] == ["https://example.com/history"]

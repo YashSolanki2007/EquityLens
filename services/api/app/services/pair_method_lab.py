@@ -59,6 +59,14 @@ MAX_HALF_LIFE_DAYS = 90
 MAX_DEEP_CANDIDATES = 160
 MAX_RESULTS_TO_CACHE = MAX_DEEP_CANDIDATES
 PAIR_METHOD_CACHE_TTL_SECONDS = 6 * 60 * 60
+TRACKER_ENTRY_ZSCORE_ABS_THRESHOLD = 1.7
+TRACKER_CONFIRMED_MIN_ABS_ZSCORE = 0.6
+TRACKER_CONFIRMED_MIN_ABS_DECLINE = 0.3
+TRACKER_CONFIRMED_MIN_RELATIVE_DECLINE = 0.2
+TRACKER_CONFIRMED_LOOKBACK_OBSERVATIONS = 5
+TRACKER_EXIT_ZSCORE_ABS_TARGET = 0.2
+TRACKER_MIN_REMAINING_RETURN_PERCENT = 1.5
+TRACKER_FDR_Q_CUTOFF = 0.05
 
 
 @dataclass(frozen=True)
@@ -129,6 +137,82 @@ def potential_convergence_return_percent(
     if gross_notional <= 0 or not math.isfinite(gross_notional):
         return 0.0
     return abs(spread_gap) / gross_notional * 100
+
+
+def tracker_entry_diagnostics(
+    *,
+    engle_granger_pass: bool,
+    kss_pass: bool,
+    fdr_q_value: float,
+    current_zscore: float,
+    potential_convergence_return_percent: float,
+    zscore_history: list[float | None],
+) -> dict[str, float | str | None]:
+    """Classify direct and reversal-confirmed tracker entries causally."""
+
+    current_abs = abs(current_zscore)
+    remaining_fraction = (
+        max(current_abs - TRACKER_EXIT_ZSCORE_ABS_TARGET, 0.0) / current_abs
+        if current_abs > 0
+        else 0.0
+    )
+    remaining_return = potential_convergence_return_percent * remaining_fraction
+    output: dict[str, float | str | None] = {
+        "entry_type": None,
+        "recent_peak_abs_zscore": None,
+        "remaining_return_percent": round(remaining_return, 3),
+    }
+    if not (
+        engle_granger_pass
+        and kss_pass
+        and math.isfinite(fdr_q_value)
+        and fdr_q_value <= TRACKER_FDR_Q_CUTOFF
+        and math.isfinite(current_zscore)
+    ):
+        return output
+    if current_abs >= TRACKER_ENTRY_ZSCORE_ABS_THRESHOLD:
+        output["entry_type"] = "direct"
+        output["recent_peak_abs_zscore"] = round(current_abs, 3)
+        return output
+
+    history = [
+        float(value)
+        for value in zscore_history
+        if value is not None and math.isfinite(float(value))
+    ]
+    if not history:
+        return output
+    # The separately supplied current value is authoritative because candidate fields
+    # are rounded after the chart is built.
+    history[-1] = current_zscore
+    recent = history[-(TRACKER_CONFIRMED_LOOKBACK_OBSERVATIONS + 1) :]
+    if len(recent) < 3:
+        return output
+    prior = recent[:-1]
+    signed_prior = [value for value in prior if value * current_zscore > 0]
+    if not signed_prior:
+        return output
+    peak_abs = max(abs(value) for value in signed_prior)
+    output["recent_peak_abs_zscore"] = round(peak_abs, 3)
+    recent_three = recent[-3:]
+    magnitudes = [abs(value) for value in recent_three]
+    same_sign = all(value * current_zscore > 0 for value in recent_three)
+    trending_toward_zero = (
+        same_sign and magnitudes[0] > magnitudes[1] > magnitudes[2]
+    )
+    absolute_decline = peak_abs - current_abs
+    relative_decline = absolute_decline / peak_abs if peak_abs > 0 else 0.0
+    if (
+        TRACKER_CONFIRMED_MIN_ABS_ZSCORE <= current_abs
+        < TRACKER_ENTRY_ZSCORE_ABS_THRESHOLD
+        and peak_abs >= TRACKER_ENTRY_ZSCORE_ABS_THRESHOLD
+        and absolute_decline >= TRACKER_CONFIRMED_MIN_ABS_DECLINE
+        and relative_decline >= TRACKER_CONFIRMED_MIN_RELATIVE_DECLINE
+        and trending_toward_zero
+        and remaining_return >= TRACKER_MIN_REMAINING_RETURN_PERCENT
+    ):
+        output["entry_type"] = "confirmed_convergence"
+    return output
 
 
 def raw_hedge_futures_contract_counts(
@@ -632,6 +716,14 @@ def _build_candidate(
         )
         for index, row in chart_prices.iterrows()
     ]
+    tracker_diagnostics = tracker_entry_diagnostics(
+        engle_granger_pass=test.p_value <= ENGLE_GRANGER_CUTOFF,
+        kss_pass=test.kss_pass,
+        fdr_q_value=float(q_value),
+        current_zscore=zscore,
+        potential_convergence_return_percent=convergence_return,
+        zscore_history=[point.paper_zscore for point in chart],
+    )
     sector = (
         member_a.sector
         if member_a.sector == member_b.sector
@@ -665,6 +757,13 @@ def _build_candidate(
         paper_signal=paper_signal,
         long_ticker=long_ticker,
         short_ticker=short_ticker,
+        tracker_entry_type=tracker_diagnostics["entry_type"],
+        tracker_recent_peak_abs_zscore=tracker_diagnostics[
+            "recent_peak_abs_zscore"
+        ],
+        tracker_remaining_return_percent=tracker_diagnostics[
+            "remaining_return_percent"
+        ],
         rolling_windows=int(validation["rolling_windows"] or 0),
         stability_passed_windows=int(validation["stability_passes"] or 0),
         stability_score_percent=round(
@@ -736,9 +835,10 @@ def scan_paper_method_matrix(
     ]
     significant.sort(
         key=lambda item: (
+            item[1],
             not (item[0].p_value <= ENGLE_GRANGER_CUTOFF and item[0].kss_pass),
-            item[0].half_life_days or math.inf,
             -abs(item[0].current_zscore or 0),
+            item[0].half_life_days or math.inf,
             item[0].p_value,
         )
     )
@@ -749,11 +849,11 @@ def scan_paper_method_matrix(
     ]
     candidates.sort(
         key=lambda item: (
-            -item.stability_score_percent,
-            item.paper_signal == "inside_entry_band",
+            item.fdr_q_value,
             not (item.engle_granger_pass and item.kss_pass),
-            item.half_life_days,
             -abs(item.current_zscore),
+            -item.stability_score_percent,
+            item.half_life_days,
             item.pair_id,
         )
     )
@@ -788,7 +888,7 @@ async def get_pair_method_lab(
         for member in members
     )
     cache = FileCache(get_settings().cache_path, "pair_method_lab")
-    key = cache_key("arxiv-2109.10662-nse-daily-spot-tracking-v13", fingerprint)
+    key = cache_key("arxiv-2109.10662-nse-daily-spot-tracking-v14", fingerprint)
     cached = None if refresh else cache.get(key, PAIR_METHOD_CACHE_TTL_SECONDS)
     if cached is not None:
         return PairMethodLabResponse.model_validate(
@@ -829,7 +929,7 @@ async def get_pair_method_lab(
             "The current-scanner comparison inside this lab is deliberately refitted on the paper method's 252 trading days. The production pair scanner separately uses exactly the latest 250 common trading observations.",
             "The paper used minute cryptocurrency data, three-month formation windows, one-week execution data, and BitMEX market microstructure. This NSE comparison uses 252 daily formation observations and five daily validation observations because equivalent licensed intraday history is unavailable.",
             "Both admission tests are tightened to an approximately 0.01% pair-level threshold (99.99% significance). Engle-Granger uses p <= 0.0001; KSS uses a residual-specific -5.04 critical statistic calibrated from 1,000,000 independent 252-day random-walk pairs under the no-cointegration null.",
-            "Every eligible F&O pair is screened in the latest formation window. Six weekly 252-day windows are then tested for at most the strongest 160 candidates. The combined stability score counts only windows where both Engle-Granger and KSS pass; q-value is displayed but never used for admission or ranking. The half-life-derived adaptive window is reserved for Z-score estimation and is not used to shorten the cointegration-test sample.",
+            "Every eligible F&O pair is screened in the latest formation window. Up to 160 candidates are ordered by Benjamini-Hochberg q-value before the deeper six-window validation. The tracker separately requires both tests, q <= 0.05 and |Z| >= 1.7 for entry. The half-life-derived adaptive window is reserved for Z-score estimation and is not used to shorten the cointegration-test sample.",
             "The lab implements the paper's pair scenario (Engle-Granger, KSS, OU half-life, adaptive Z-score window). Its nine-coin Johansen basket and crypto maker-rebate results are not treated as directly transferable to NSE stock futures.",
             "The KSS 0.01% cutoff is a reproducible Monte Carlo calibration for Gaussian random-walk innovations and the lab's exact sample length and lag specification. Different innovation distributions, volatility regimes, or lag choices can produce a different finite-sample cutoff.",
             "Daily closes do not model bid/ask spread, futures basis, brokerage, taxes, slippage, margin, rollover, or whether a signal could actually be filled.",

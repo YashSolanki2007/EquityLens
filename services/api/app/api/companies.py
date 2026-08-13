@@ -57,6 +57,9 @@ from app.services.market_data.india_trading import (
     get_trading_ratios,
 )
 from app.services.market_data.iv_surface import get_iv_surface_forecast
+from app.services.market_data.path_dependent_ssvi import (
+    get_path_dependent_iv_surface_forecast,
+)
 from app.services.market_data.paper_iv_trades import (
     NSE_DATE_FORMAT,
     paper_trade_response,
@@ -320,6 +323,24 @@ async def get_company_iv_surface_forecast(
     return await get_iv_surface_forecast(company.ticker, nse_symbol, expiry)
 
 
+@router.get(
+    "/{ticker}/path-dependent-iv-surface-forecast",
+    response_model=IVSurfaceForecastOut,
+)
+async def get_company_path_dependent_iv_surface_forecast(
+    ticker: str,
+    expiry: str | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    company = await _get_company(db, ticker)
+    _, nse_symbol = _india_market_identifiers(company)
+    return await get_path_dependent_iv_surface_forecast(
+        company.ticker,
+        nse_symbol,
+        expiry,
+    )
+
+
 @router.post(
     "/{ticker}/paper-iv-trades",
     response_model=PaperIVTradeOut,
@@ -334,10 +355,18 @@ async def create_company_paper_iv_trade(
 
     company = await _get_company(db, ticker)
     _, nse_symbol = _india_market_identifiers(company)
-    forecast = await get_iv_surface_forecast(
-        company.ticker,
-        nse_symbol,
-        body.expiry,
+    forecast = (
+        await get_path_dependent_iv_surface_forecast(
+            company.ticker,
+            nse_symbol,
+            body.expiry,
+        )
+        if body.model_family == "path_dependent_ssvi"
+        else await get_iv_surface_forecast(
+            company.ticker,
+            nse_symbol,
+            body.expiry,
+        )
     )
     available_strategies = list(forecast.get("strategies") or [])
     if body.strategy_id:

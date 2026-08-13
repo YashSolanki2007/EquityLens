@@ -234,6 +234,8 @@ class IVSurfaceComparisonOut(BaseModel):
     difference_vol_points: float
     model_error_vol_points: float
     material_threshold_vol_points: float
+    standardized_gap: float | None = None
+    significant: bool | None = None
     status: Literal["cheap", "expensive", "in_line"]
     explanation: str
 
@@ -297,6 +299,7 @@ class IVSurfaceForecastOut(BaseModel):
     forecast_for_date: str | None = None
     model: str
     model_version: str
+    model_family: Literal["fpca_var", "path_dependent_ssvi"] = "fpca_var"
     observations: int = 0
     fit_start: str | None = None
     fit_end: str | None = None
@@ -306,6 +309,13 @@ class IVSurfaceForecastOut(BaseModel):
     validation_rmse_by_components: dict[str, float] = Field(default_factory=dict)
     fourth_component_improvement_percent: float | None = None
     component_selection_note: str
+    validation_model_rmse: float | None = None
+    validation_baseline_rmse: float | None = None
+    validation_improvement_over_baseline_percent: float | None = None
+    validation_directional_accuracy_percent: float | None = None
+    ssvi_parameters: dict[str, float] | None = None
+    path_features: dict[str, dict[str, float]] | None = None
+    static_arbitrage_checks: dict[str, float | bool] | None = None
     tenor_grid_days: list[int] = Field(default_factory=list)
     comparisons: list[IVSurfaceComparisonOut] = Field(default_factory=list)
     strategy: IVStrategyOut
@@ -328,6 +338,7 @@ class PaperIVTradeCreate(BaseModel):
     portfolio_id: UUID
     expiry: str
     strategy_id: str | None = None
+    model_family: Literal["fpca_var", "path_dependent_ssvi"] = "fpca_var"
     quantity_lots: int = Field(default=1, ge=1, le=20)
 
 

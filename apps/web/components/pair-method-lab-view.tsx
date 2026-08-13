@@ -258,6 +258,16 @@ function CandidateCard({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            {pair.tracker_entry_type ? (
+              <Badge
+                variant="outline"
+                className="border-emerald-700/30 text-emerald-700 dark:text-emerald-400"
+              >
+                {pair.tracker_entry_type === "direct"
+                  ? "Tracker: direct entry"
+                  : "Tracker: confirmed convergence"}
+              </Badge>
+            ) : null}
             <Badge variant={pair.paper_signal === "inside_entry_band" ? "secondary" : "default"}>
               {signalText(pair)}
             </Badge>
@@ -283,7 +293,7 @@ function CandidateCard({
               <p className="px-2 pt-2 text-xs font-semibold">Paper-method spread Z-score</p>
               <PaperZScoreChart pair={pair} />
               <p className="px-2 pb-2 text-[10px] leading-4 text-muted-foreground">
-                ±2σ are entry levels, ±1σ are exit levels, and zero is the adaptive rolling mean.
+                The tracker arms at |Z| ≥ 1.7 and exits near |Z| ≤ 0.2. Zero is the adaptive rolling mean.
               </p>
             </section>
           </div>
@@ -301,6 +311,11 @@ function CandidateCard({
                 raw-price spread fully returns to its adaptive mean. It is not probability-weighted
                 and excludes costs, futures basis, lot rounding and margin.
               </p>
+              {pair.tracker_recent_peak_abs_zscore != null ? (
+                <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+                  Recent peak |Z| {pair.tracker_recent_peak_abs_zscore.toFixed(2)} · remaining return to |Z| = 0.2 {pair.tracker_remaining_return_percent?.toFixed(2) ?? "—"}%
+                </p>
+              ) : null}
             </section>
 
             <section className="rounded-lg border border-border p-4">
@@ -383,7 +398,7 @@ function CandidateCard({
                 <Metric
                   label="BH-adjusted q"
                   value={pValue(pair.fdr_q_value)}
-                  note="Information only—never used for inclusion or ranking"
+                  note="Primary result ordering; tracker requires q ≤ 0.05"
                 />
                 <Metric
                   label="KSS statistic"
@@ -466,7 +481,8 @@ function CandidateCard({
                 Lab’s current-method comparison: {currentComparisonDays} observations, log prices,
                 fixed 60-day Z-score window and p ≤ 0.001.
                 Paper lab: 252-day rolling formation, adaptive window and p ≤ {engleGrangerCutoff} or KSS pass.
-                BH-adjusted q is shown above but does not admit, reject or rank a lab pair.
+                The lab list is ordered by BH-adjusted q. The tracker requires both lab tests,
+                q ≤ 0.05 and |Z| ≥ 1.7 before opening a spot-proxy observation.
               </p>
             </section>
           </div>
@@ -477,10 +493,10 @@ function CandidateCard({
 }
 
 export function PairMethodLabView() {
-  const [screeningMode, setScreeningMode] = useState("method");
-  const [testFilter, setTestFilter] = useState("either");
+  const [screeningMode, setScreeningMode] = useState("q_value");
+  const [testFilter, setTestFilter] = useState("both");
   const [comparisonFilter, setComparisonFilter] = useState("all");
-  const [absoluteZFilter, setAbsoluteZFilter] = useState("all");
+  const [absoluteZFilter, setAbsoluteZFilter] = useState("tracker");
   const [qValueCutoff, setQValueCutoff] = useState("0.05");
   const queryClient = useQueryClient();
   const scan = useQuery({
@@ -508,6 +524,7 @@ export function PairMethodLabView() {
           : testMatch && comparisonMatch;
       const absoluteZMatch =
         absoluteZFilter === "all" ||
+        (absoluteZFilter === "tracker" && pair.tracker_entry_type != null) ||
         Math.abs(pair.current_zscore) >= Number(absoluteZFilter);
       return screeningMatch && absoluteZMatch;
     });
@@ -619,7 +636,7 @@ export function PairMethodLabView() {
               <h2 className="section-heading">Method comparison results</h2>
               <p className="mt-1 text-xs text-muted-foreground">
                 Showing {results.length} of {scan.data.returned} deeply validated candidates,
-                ranked by the six-window stability score—not by q-value. {screeningMode === "q_value"
+                ranked from lowest to highest BH q-value. {screeningMode === "q_value"
                   ? `FDR mode requires q ≤ ${qValueCutoff} and the selected test outcome; the versus-current comparison is ignored. This controls the expected false-discovery share, not a per-pair confidence probability.`
                   : "Method mode applies the test and versus-current selections."}
               </p>
@@ -688,9 +705,11 @@ export function PairMethodLabView() {
                   className="h-9 rounded-md border border-input bg-card px-3 text-sm"
                 >
                   <option value="all">All Z-scores</option>
+                  <option value="tracker">Tracker-qualified entries</option>
                   <option value="0.5">|Z| ≥ 0.5σ</option>
                   <option value="1">|Z| ≥ 1σ</option>
                   <option value="1.5">|Z| ≥ 1.5σ</option>
+                  <option value="1.7">|Z| ≥ 1.7σ — tracker entry</option>
                   <option value="2">|Z| ≥ 2σ — paper entry</option>
                   <option value="2.5">|Z| ≥ 2.5σ</option>
                   <option value="3">|Z| ≥ 3σ</option>

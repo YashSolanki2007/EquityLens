@@ -15,7 +15,10 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-from app.core.llm import generate_structured, get_provider
+from app.core.llm import (
+    generate_structured,
+    get_company_chat_provider,
+)
 from app.models import Company, CompanyCard
 from app.prompts.company_chat import (
     COMPANY_CHAT_PLAN_SYSTEM,
@@ -33,6 +36,10 @@ from app.services.company_financials import get_financial_overview
 from app.services.ingestion import refresh_india_financial_facts
 from app.services.market_data.forecasting import get_price_forecast
 from app.services.market_data.india_trading import get_options_chain, get_trading_ratios
+from app.services.research.deep_research import (
+    is_price_move_research_question,
+    research_company_page_deeply,
+)
 from app.services.research.news import TavilyNewsClient
 from app.services.technical_scanner import (
     calculate_technical_snapshot,
@@ -81,6 +88,8 @@ class Evidence:
 
 def _heuristic_plan(question: str) -> CompanyChatPlan:
     text = question.lower()
+    if is_price_move_research_question(question):
+        return CompanyChatPlan(intent="deep_research", needs_cards=True, needs_news=True)
     decision = bool(
         re.search(r"\b(buy|sell|hold|invest|outlook|confidence|bullish|bearish)\b", text)
     )
@@ -155,6 +164,8 @@ def _normalize_plan(plan: CompanyChatPlan, question: str) -> CompanyChatPlan:
             re.IGNORECASE,
         )
     )
+    if is_price_move_research_question(question):
+        return CompanyChatPlan(intent="deep_research", needs_cards=True, needs_news=True)
     if plan.intent == "decision_support":
         return CompanyChatPlan(
             intent=plan.intent,
@@ -621,6 +632,7 @@ async def answer_company_question(
     request: CompanyChatRequest,
 ) -> CompanyChatResponse:
     plan = await _plan(company, request.message)
+    provider = get_company_chat_provider()
     limitations: list[str] = []
     data_used: list[str] = []
     evidence: list[Evidence] = []
@@ -634,7 +646,33 @@ async def answer_company_question(
                 f"({company.ticker}). Ask about its business, financials, ratios, "
                 "technicals, options, forecasts, filings, or recent developments."
             ),
-            model_name=get_provider().model_name,
+            model_name=provider.model_name,
+            generated_at=datetime.now(UTC),
+        )
+
+    if plan.intent == "deep_research":
+        research = await research_company_page_deeply(
+            db,
+            company,
+            request.message,
+            conversation_context=_history_text(request),
+        )
+        source_types = list(
+            dict.fromkeys(citation.source_type for citation in research.citations)
+        )
+        return CompanyChatResponse(
+            ticker=company.ticker,
+            intent=plan.intent,
+            answer=research.answer,
+            citations=[
+                citation.model_dump(mode="json") for citation in research.citations
+            ],
+            limitations=list(dict.fromkeys(research.limitations)),
+            data_used=[
+                "multi-angle company catalyst research",
+                *source_types,
+            ],
+            model_name=get_company_chat_provider(reasoning=True).model_name,
             generated_at=datetime.now(UTC),
         )
 
@@ -877,7 +915,6 @@ async def answer_company_question(
     if not rendered:
         rendered = "[1] Availability\nNo verified data was retrieved for this question."
 
-    provider = get_provider()
     answer = await provider.chat(
         [
             {"role": "system", "content": COMPANY_CHAT_SYSTEM},
@@ -895,7 +932,7 @@ async def answer_company_question(
             },
         ],
         temperature=0.1,
-        max_tokens=1_400,
+        max_tokens=2_800,
     )
 
     cited: list[CitationOut] = []

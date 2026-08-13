@@ -1,4 +1,4 @@
-# Equity Research Prototype
+# EquityLens
 
 A semantic equity research tool over the official NSE main-board equity universe.
 Natural-language queries are parsed into a
@@ -90,8 +90,46 @@ cd apps/web && npm install && npm run dev
 
 Pages: `/` (search), `/search/[id]` (results, funnel, comparison, citations, chat),
 `/company/[ticker]` (market chart, ratios, options, price scenarios, cards,
-filings, facts), `/technical` (semantic and indicator scanner), `/admin`
+filings, facts), `/technical` (semantic and indicator scanner), and `/admin`
 (ingestion/card status).
+
+Implemented research features that are intentionally absent from the website are
+recorded in [`docs/dormant-features.txt`](docs/dormant-features.txt). Their source,
+data, and tests remain in the repository for possible future reuse.
+
+### Signal research
+
+The original custom signal remains intact as the version-control baseline. The
+alternative model removes its next-day PDF interpretation and annualized-slope versus
+daily-volatility comparison. It uses a 21-session and 63-session EMA crossover, with
+the EMA distance normalized by 21-session EWMA volatility for a scale-free diagnostic
+score. The sign alone determines long or cash.
+
+Both reports use the same conservative execution assumption (signal after close `t`,
+trade at close `t+1`, first earned return `t+1` to `t+2`), 10 bps one-way costs, zero
+cash yield, and price-only index returns. Regenerate the reports from the repository
+root:
+
+```bash
+services/api/.venv/bin/python -m scripts.generate_custom_signal
+services/api/.venv/bin/python -m scripts.generate_alternative_signal
+services/api/.venv/bin/python -m scripts.generate_robust_signal
+```
+
+The alternative report compares the frozen rule with the original over identical
+windows, discloses neighboring-window sensitivity, and transfers the unchanged
+parameters to Indian indices and a survivorship-biased large-cap diagnostic panel.
+The robust report adds a 15/45 EMA regime, conservative two-timescale volatility
+budget, the longest available crisis-inclusive window, volatility-only and
+exposure-matched controls, paired stationary-bootstrap intervals, HAC inference,
+Deflated Sharpe, a trial ledger, and explicit promotion gates. It is a defensive
+paper-trading candidate—not validated alpha—and its frozen forward test begins on
+11 August 2026. Same-calendar-day Yahoo bars are excluded so an incomplete live
+session cannot enter the historical report. Full formulas and limitations are in
+[`docs/robust-signal-methodology.md`](docs/robust-signal-methodology.md).
+
+None of the reports is evidence of a live, tradeable alpha until it passes genuinely
+unseen forward testing with a licensed total-return data source.
 
 ### Intraday algorithmic scanner
 
@@ -158,6 +196,10 @@ cd services/api
 cd ../..
 services/api/.venv/bin/python scripts/evaluate_search.py
 services/api/.venv/bin/python scripts/evaluate_search.py --full   # adds citation coverage
+
+# Signal-model unit tests
+services/api/.venv/bin/python -m unittest \
+  scripts.test_custom_signal scripts.test_alternative_signal
 ```
 
 ## Data sources, caching, and limits

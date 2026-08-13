@@ -1,0 +1,51 @@
+.git
+.gitignore
+.DS_Store
+
+# Local secrets and editor state
+.env
+.env.*
+!.env.example
+.idea
+.vscode
+
+# JavaScript build and dependency caches
+node_modules
+**/node_modules
+.next
+**/.next
+out
+dist
+build
+coverage
+*.tsbuildinfo
+.npm
+
+# Python environments and caches
+.venv
+**/.venv
+venv
+**/venv
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.pytest_cache
+**/.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Runtime data that must not be baked into development images
+data/cache
+data/filings
+data/logs
+tmp
+output
+
+# Local logs and credentials
+*.log
+*.pem
+*.key

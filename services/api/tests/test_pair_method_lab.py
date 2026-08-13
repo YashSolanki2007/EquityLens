@@ -11,6 +11,7 @@ from app.services.pair_method_lab import (
     kss_test,
     potential_convergence_return_percent,
     scan_paper_method_matrix,
+    tracker_entry_diagnostics,
 )
 from app.services.pair_suggestions import FuturesContract, PairUniverseMember
 
@@ -43,6 +44,71 @@ def test_potential_convergence_return_uses_both_legs_gross_notional():
     )
 
     assert result == 5.0
+
+
+def test_tracker_direct_entry_uses_current_absolute_zscore() -> None:
+    result = tracker_entry_diagnostics(
+        engle_granger_pass=True,
+        kss_pass=True,
+        fdr_q_value=0.02,
+        current_zscore=-1.7,
+        potential_convergence_return_percent=2.0,
+        zscore_history=[-1.2, -1.5, -1.7],
+    )
+
+    assert result["entry_type"] == "direct"
+    assert result["recent_peak_abs_zscore"] == 1.7
+
+
+def test_tracker_confirmed_entry_requires_recent_same_sign_contraction() -> None:
+    result = tracker_entry_diagnostics(
+        engle_granger_pass=True,
+        kss_pass=True,
+        fdr_q_value=0.02,
+        current_zscore=1.0,
+        potential_convergence_return_percent=2.0,
+        zscore_history=[2.0, 1.8, 1.5, 1.2, 1.0],
+    )
+
+    assert result["entry_type"] == "confirmed_convergence"
+    assert result["recent_peak_abs_zscore"] == 2.0
+    assert result["remaining_return_percent"] == 1.6
+
+
+def test_tracker_confirmed_entry_rejects_insufficient_remaining_return() -> None:
+    result = tracker_entry_diagnostics(
+        engle_granger_pass=True,
+        kss_pass=True,
+        fdr_q_value=0.02,
+        current_zscore=-1.0,
+        potential_convergence_return_percent=1.0,
+        zscore_history=[-2.0, -1.8, -1.5, -1.2, -1.0],
+    )
+
+    assert result["entry_type"] is None
+    assert result["remaining_return_percent"] == 0.8
+
+
+def test_tracker_confirmed_entry_rejects_noisy_or_stale_peak() -> None:
+    noisy = tracker_entry_diagnostics(
+        engle_granger_pass=True,
+        kss_pass=True,
+        fdr_q_value=0.02,
+        current_zscore=1.0,
+        potential_convergence_return_percent=2.0,
+        zscore_history=[2.0, 1.8, 1.1, 1.2, 1.0],
+    )
+    stale = tracker_entry_diagnostics(
+        engle_granger_pass=True,
+        kss_pass=True,
+        fdr_q_value=0.02,
+        current_zscore=1.0,
+        potential_convergence_return_percent=2.0,
+        zscore_history=[2.0, 1.6, 1.5, 1.4, 1.3, 1.2, 1.0],
+    )
+
+    assert noisy["entry_type"] is None
+    assert stale["entry_type"] is None
 
 
 def test_futures_capital_plan_reports_long_short_and_combined_notionals():

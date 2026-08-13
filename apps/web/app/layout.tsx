@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
@@ -14,13 +15,41 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "EquityLens",
-    template: "%s · EquityLens",
-  },
-  description:
-    "Source-grounded semantic equity research across business exposure, financial performance, and current market events.",
+export async function generateMetadata(): Promise<Metadata> {
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const protocol = requestHeaders.get("x-forwarded-proto") ?? "http";
+  const metadataBase = host ? new URL(`${protocol}://${host}`) : undefined;
+
+  return {
+    metadataBase,
+    title: {
+      default: "EquityLens",
+      template: "%s · EquityLens",
+    },
+    description:
+      "Institutional-grade Indian equity research across company fundamentals, primary filings, market events, and quantitative signals.",
+    openGraph: {
+      title: "EquityLens · India Equity Intelligence",
+      description: "Move from market question to defensible evidence.",
+      images: [{ url: "/og.png", width: 1734, height: 907, alt: "EquityLens India equity intelligence workspace" }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: "EquityLens · India Equity Intelligence",
+      description: "Move from market question to defensible evidence.",
+      images: ["/og.png"],
+    },
+  };
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f6f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#171814" },
+  ],
 };
 
 export default function RootLayout({
@@ -45,14 +74,14 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col">
         <Providers>
           <SiteHeader />
-          <main className="flex-1 pb-8 pt-28 md:ml-56 md:pt-[76px]">
+          <main className="flex-1 pb-5 pt-[72px] lg:ml-[228px]">
             <div className="page-shell">{children}</div>
           </main>
-          <footer className="mt-8 border-t border-border bg-card md:ml-56">
-            <div className="page-shell flex flex-col gap-2 py-5 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-              <span>NSE filings · delayed market data · source-linked news</span>
+          <footer className="mt-4 border-t border-border bg-card lg:ml-[228px]">
+            <div className="page-shell flex flex-col gap-2 py-4 font-mono text-[8px] uppercase tracking-[0.08em] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+              <span>NSE filings · Delayed market data · Source-linked news</span>
               <span>
-                Research and information retrieval only — not investment advice.
+                Research and information retrieval only · Not investment advice
               </span>
             </div>
           </footer>

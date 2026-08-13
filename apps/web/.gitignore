@@ -16,6 +16,8 @@
 # next.js
 /.next/
 /out/
+/.vinext/
+/.wrangler/
 
 # production
 /build

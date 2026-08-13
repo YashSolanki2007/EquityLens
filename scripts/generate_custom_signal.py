@@ -33,6 +33,8 @@ MAX_EXPECTED_WINDOW = 63
 VOLATILITY_THRESHOLD_QUANTILE = 0.50
 VOLATILITY_THRESHOLD_MINIMUM_ROWS = 126
 VOLATILITY_THRESHOLD_QUANTILES = (0.25, 0.40, 0.50, 0.60, 0.75)
+MOMENTUM_PERCENTILE_LOOKBACK = 252
+MOMENTUM_PERCENTILE_MINIMUM_ROWS = 63
 
 INDEX_UNIVERSE = (
     ("^BSESN", "S&P BSE Sensex"),
@@ -61,6 +63,7 @@ def build_model_frame(close: pd.Series, lookback: int = LOOKBACK) -> pd.DataFram
     log_return = np.log(close).diff()
     simple_return = close.pct_change()
     frame = trend.copy()
+    frame["close"] = close
     frame["return_1d"] = log_return
     frame["simple_return"] = simple_return
     frame["ewma_daily_sd"] = log_return.ewm(
@@ -274,6 +277,26 @@ def expanding_volatility_percentile_threshold(
     )
 
 
+def rolling_score_percentile(
+    score: pd.Series,
+    lookback: int = MOMENTUM_PERCENTILE_LOOKBACK,
+    minimum_rows: int = MOMENTUM_PERCENTILE_MINIMUM_ROWS,
+) -> pd.Series:
+    """Rank today's score against prior scores without using future data."""
+
+    values = score.to_numpy(dtype=float)
+    percentile = np.full(len(values), np.nan)
+    for index, current in enumerate(values):
+        if not np.isfinite(current):
+            continue
+        history = values[max(0, index - lookback) : index]
+        history = history[np.isfinite(history)]
+        if len(history) < minimum_rows:
+            continue
+        percentile[index] = float(np.mean(history <= current))
+    return pd.Series(percentile, index=score.index, name="score_percentile")
+
+
 def run_strategy(
     predictions: pd.DataFrame,
     close: pd.Series,
@@ -376,6 +399,27 @@ def chart_points(frame: pd.DataFrame) -> list[dict[str, float | str | None]]:
         {"date": index.date().isoformat()}
         | {column: _finite(row[column], 6) for column in columns}
         for index, row in sampled.iterrows()
+    ]
+
+
+def momentum_diagnostic_points(
+    frame: pd.DataFrame,
+    maximum_sessions: int = 504,
+) -> list[dict[str, float | str | None]]:
+    """Daily price and indicator history for entry/exit-rule diagnostics."""
+
+    recent = frame.tail(maximum_sessions)
+    columns = (
+        "close",
+        "custom_score",
+        "score_percentile",
+        "signal_threshold",
+        "position",
+    )
+    return [
+        {"date": index.date().isoformat()}
+        | {column: _finite(row[column], 6) for column in columns}
+        for index, row in recent.iterrows()
     ]
 
 
@@ -588,6 +632,9 @@ def build_report(
 ) -> dict[str, object]:
     model_frame = build_model_frame(close)
     predictions, pdf_parameters = walk_forward_probabilities(model_frame)
+    predictions["score_percentile"] = rolling_score_percentile(
+        predictions["custom_score"]
+    )
     primary_threshold = expanding_volatility_percentile_threshold(predictions)
     evaluation_start = primary_threshold.first_valid_index()
     primary_frame, primary_metrics = run_strategy(
@@ -664,6 +711,11 @@ def build_report(
         "raw_calibration": calibration_bins(predictions, "raw_probability"),
         "adjusted_calibration": calibration_bins(predictions, "adjusted_probability"),
         "chart": chart_points(primary_frame),
+        "momentum_diagnostic": {
+            "percentile_lookback_sessions": MOMENTUM_PERCENTILE_LOOKBACK,
+            "minimum_history_sessions": MOMENTUM_PERCENTILE_MINIMUM_ROWS,
+            "points": momentum_diagnostic_points(primary_frame),
+        },
         "yearly_returns": yearly_returns(primary_frame),
         "sensitivity": sensitivity,
         "standard_deviation": standard_deviation_views(predictions),

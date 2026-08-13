@@ -4,10 +4,11 @@ The implementation follows the MetLife paper's sequence:
 
 1. build a daily IV surface on fixed delta and tenor coordinates;
 2. smooth each surface with a tensor-product B-spline;
-3. use FPCA (the discrete Karhunen-Loève decomposition), comparing exact
-   three- and four-component models out of sample; and
-4. forecast differenced component scores with a VAR(5), then reconstruct the
-   next-session surface.
+3. use FPCA (the discrete Karhunen-Loève decomposition), retaining the smallest
+   three-to-eight-component representation that explains at least 99% of the
+   observed surface variation; and
+4. forecast differenced component scores with a regularized VAR(5), then
+   reconstruct the next-session surface.
 
 NSE stock options list fewer tenors than the FX data in the paper, so the
 production grid uses four rolling days-to-expiry points rather than the
@@ -21,8 +22,10 @@ import csv
 import io
 import logging
 import math
+import time as monotonic_time
 import zipfile
-from datetime import UTC, date, datetime, timedelta
+from collections.abc import Callable
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -37,8 +40,11 @@ from app.services.nse.client import get_nse_client
 
 logger = logging.getLogger(__name__)
 
-MODEL_NAME = "B-spline FPCA (adaptive 3/4 components) + VAR(5) on differenced scores"
-MODEL_VERSION = "nse-fpca-var5-v10-durable-forecast"
+MODEL_NAME = (
+    "B-spline FPCA (adaptive 3-8 components, 99% variance target) + "
+    "ridge VAR(5) on differenced scores"
+)
+MODEL_VERSION = "nse-fpca-ridge-var5-v11-adaptive99"
 SURFACE_DATA_VERSION = "nse-fpca-var5-v2-durable-history"
 PAPER_URL = (
     "https://investments.metlife.com/content/dam/metlifecom/us/investments/"
@@ -46,7 +52,11 @@ PAPER_URL = (
     "MIM_Functional-PCA-Implied-Volatility-Surface-Prediction_051920.pdf"
 )
 ARCHIVE_URL = (
-    "https://nsearchives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_{date}_F_0000.csv.zip"
+    "https://archives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_{date}_F_0000.csv.zip"
+)
+LEGACY_ARCHIVE_URL = (
+    "https://archives.nseindia.com/content/historical/DERIVATIVES/"
+    "{year}/{month}/fo{day}{month}{year}bhav.csv.zip"
 )
 FNO_MARKET_LOTS_URL = "https://nsearchives.nseindia.com/content/fo/fo_mktlots.csv"
 
@@ -60,14 +70,24 @@ DELTA_BUCKETS = (
     ("25Δ call", "call", 0.25),
     ("10Δ call", "call", 0.10),
 )
-TARGET_HISTORY_SURFACES = 50
-CANDIDATE_WEEKDAYS = 120
+# Keep enough NSE history to reproduce the 2,349-observation sample used by
+# Shang and Kearney (1,827 training observations plus 522 holdout observations).
+# The option history is collected independently from NSE bhavcopies and persisted,
+# so request-time forecasts never repeat the backfill.
+TARGET_HISTORY_SURFACES = 2_500
+HISTORY_BACKFILL_YEARS = 20
+CANDIDATE_WEEKDAYS = 5_600
+INCREMENTAL_REFRESH_WEEKDAYS = 15
+BACKFILL_BATCH_DATES = 4
 MINIMUM_HISTORY_SURFACES = 35
 MINIMUM_VALIDATION_SURFACES = MINIMUM_HISTORY_SURFACES + 1
 HISTORY_TTL_SECONDS = 24 * 60 * 60
 FORECAST_TTL_SECONDS = 5 * 60
 MAX_IV_PERCENT = 250.0
-FOURTH_COMPONENT_MINIMUM_RMSE_IMPROVEMENT_PERCENT = 5.0
+MINIMUM_COMPONENT_COUNT = 3
+MAXIMUM_COMPONENT_COUNT = 8
+EXPLAINED_VARIANCE_TARGET_PERCENT = 99.0
+RIDGE_ALPHA_CANDIDATES = (0.1, 1.0, 10.0, 100.0)
 LOT_SIZE_TTL_SECONDS = 24 * 60 * 60
 
 
@@ -312,25 +332,62 @@ def _smooth_surface(surface: np.ndarray) -> np.ndarray:
         return surface.copy()
 
 
-def _var5_forecast(differenced_scores: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """OLS representation of a VAR(5), returning next change and residuals."""
+def _ridge_var5_forecast(
+    differenced_scores: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Regularized VAR(5), returning the next change, residuals and ridge alpha.
+
+    Adding FPCA scores makes an unregularized VAR grow by five predictors per
+    component. Standardizing the score changes and shrinking lag coefficients
+    keeps the 5-8 component models estimable with the available NSE history.
+    The intercept is not penalized. Alpha is selected using the final ten
+    causal one-step validation observations inside the training sample.
+    """
 
     lag_order = 5
     if len(differenced_scores) <= lag_order + 2:
         raise ValueError("At least eight differenced score observations are required.")
+    scale = np.std(differenced_scores, axis=0, ddof=1)
+    scale = np.where(np.isfinite(scale) & (scale > 1e-8), scale, 1.0)
+    standardized = differenced_scores / scale
     predictors = []
     targets = []
-    for index in range(lag_order, len(differenced_scores)):
-        lagged = differenced_scores[index - lag_order : index][::-1].ravel()
+    for index in range(lag_order, len(standardized)):
+        lagged = standardized[index - lag_order : index][::-1].ravel()
         predictors.append(np.concatenate(([1.0], lagged)))
-        targets.append(differenced_scores[index])
+        targets.append(standardized[index])
     x = np.asarray(predictors)
     y = np.asarray(targets)
-    coefficients = np.linalg.lstsq(x, y, rcond=None)[0]
-    residuals = y - x @ coefficients
-    latest = differenced_scores[-lag_order:][::-1].ravel()
-    forecast = np.concatenate(([1.0], latest)) @ coefficients
-    return forecast, residuals
+    penalty = np.eye(x.shape[1])
+    penalty[0, 0] = 0.0
+    validation_start = max(8, len(x) - 10)
+    alpha_losses: list[float] = []
+    for alpha in RIDGE_ALPHA_CANDIDATES:
+        errors = []
+        for target_index in range(validation_start, len(x)):
+            train_x = x[:target_index]
+            train_y = y[:target_index]
+            coefficients = np.linalg.solve(
+                train_x.T @ train_x + alpha * penalty,
+                train_x.T @ train_y,
+            )
+            errors.append(np.mean((y[target_index] - x[target_index] @ coefficients) ** 2))
+        alpha_losses.append(float(np.mean(errors)) if errors else math.inf)
+    selected_alpha = float(
+        RIDGE_ALPHA_CANDIDATES[int(np.argmin(alpha_losses))]
+    )
+    coefficients = np.linalg.solve(
+        x.T @ x + selected_alpha * penalty,
+        x.T @ y,
+    )
+    standardized_residuals = y - x @ coefficients
+    latest = standardized[-lag_order:][::-1].ravel()
+    standardized_forecast = np.concatenate(([1.0], latest)) @ coefficients
+    return (
+        standardized_forecast * scale,
+        standardized_residuals * scale,
+        selected_alpha,
+    )
 
 
 def _fit_fpca_core(
@@ -352,7 +409,7 @@ def _fit_fpca_core(
     scores = centered @ components.T
     reconstruction = mean_surface + scores @ components
     reconstruction_rmse = float(np.sqrt(np.mean((flat - reconstruction) ** 2)))
-    predicted_change, _ = _var5_forecast(np.diff(scores, axis=0))
+    predicted_change, _, ridge_alpha = _ridge_var5_forecast(np.diff(scores, axis=0))
     predicted_scores = scores[-1] + predicted_change
     forecast_flat = mean_surface + predicted_scores @ components
     shape = smoothed.shape[1:]
@@ -362,6 +419,7 @@ def _fit_fpca_core(
         "component_count": component_count,
         "explained_variance_percent": float(cumulative[component_count - 1] * 100),
         "reconstruction_rmse": reconstruction_rmse,
+        "ridge_alpha": ridge_alpha,
     }
 
 
@@ -416,18 +474,22 @@ def _expanding_validation(
 
 
 def _select_component_count(
-    three_component_rmse: float,
-    four_component_rmse: float,
+    cumulative_variance_percent: np.ndarray,
 ) -> tuple[int, float]:
-    if three_component_rmse <= 0:
-        return 3, 0.0
-    improvement_percent = (three_component_rmse - four_component_rmse) / three_component_rmse * 100
-    selected = 4 if improvement_percent >= FOURTH_COMPONENT_MINIMUM_RMSE_IMPROVEMENT_PERCENT else 3
-    return selected, improvement_percent
+    """Return the smallest permitted FPCA model meeting the variance target."""
+
+    maximum = min(MAXIMUM_COMPONENT_COUNT, len(cumulative_variance_percent))
+    if maximum < MINIMUM_COMPONENT_COUNT:
+        raise ValueError("Too few FPCA directions are available for component selection.")
+    for component_count in range(MINIMUM_COMPONENT_COUNT, maximum + 1):
+        retained = float(cumulative_variance_percent[component_count - 1])
+        if retained >= EXPLAINED_VARIANCE_TARGET_PERCENT:
+            return component_count, retained
+    return maximum, float(cumulative_variance_percent[maximum - 1])
 
 
 def fit_fpca_var(surfaces: np.ndarray) -> dict[str, Any]:
-    """Select three or four PCs using expanding one-session forecast errors."""
+    """Retain enough PCs for 99% variance and forecast scores with ridge VAR(5)."""
 
     if surfaces.ndim != 3 or len(surfaces) < MINIMUM_VALIDATION_SURFACES:
         raise ValueError(
@@ -435,19 +497,31 @@ def fit_fpca_var(surfaces: np.ndarray) -> dict[str, Any]:
             "so the model has a one-session-ahead validation observation."
         )
     smoothed = np.asarray([_smooth_surface(surface) for surface in surfaces])
-    three_validation = _expanding_validation(smoothed, 3)
-    four_validation = _expanding_validation(smoothed, 4)
-    selected_count, improvement_percent = _select_component_count(
-        three_validation["aggregate_rmse"],
-        four_validation["aggregate_rmse"],
+    flat = smoothed.reshape(len(smoothed), -1)
+    centered = flat - flat.mean(axis=0)
+    singular_values = np.linalg.svd(centered, full_matrices=False, compute_uv=False)
+    variances = singular_values**2
+    total_variance = float(variances.sum())
+    if total_variance <= 1e-12:
+        raise ValueError("The historical IV surfaces contain no usable variation.")
+    cumulative_variance_percent = np.cumsum(variances) / total_variance * 100
+    selected_count, retained_variance = _select_component_count(
+        cumulative_variance_percent
     )
-    selected_validation = four_validation if selected_count == 4 else three_validation
+    validations = {
+        component_count: _expanding_validation(smoothed, component_count)
+        for component_count in range(
+            MINIMUM_COMPONENT_COUNT,
+            min(MAXIMUM_COMPONENT_COUNT, flat.shape[1]) + 1,
+        )
+    }
+    selected_validation = validations[selected_count]
     result = _fit_fpca_core(smoothed, selected_count)
     result["rmse_surface"] = selected_validation["rmse_surface"]
     result["validation_sessions"] = selected_validation["validation_sessions"]
     result["validation_rmse_by_components"] = {
-        "3": round(three_validation["aggregate_rmse"], 4),
-        "4": round(four_validation["aggregate_rmse"], 4),
+        str(component_count): round(validation["aggregate_rmse"], 4)
+        for component_count, validation in validations.items()
     }
     result["validation_baseline_rmse"] = round(
         selected_validation["baseline_rmse"], 4
@@ -460,57 +534,145 @@ def fit_fpca_var(surfaces: np.ndarray) -> dict[str, Any]:
         if selected_validation["directional_accuracy_percent"] is not None
         else None
     )
-    result["fourth_component_improvement_percent"] = round(
-        improvement_percent,
-        2,
+    result["fourth_component_improvement_percent"] = None
+    target_status = (
+        "meeting"
+        if retained_variance >= EXPLAINED_VARIANCE_TARGET_PERCENT
+        else "falling short of"
     )
-    if selected_count == 4:
-        result["component_selection_note"] = (
-            "Four components selected: the fourth reduced expanding-window "
-            f"one-session RMSE by {improvement_percent:.1f}% "
-            f"({three_validation['aggregate_rmse']:.2f} to "
-            f"{four_validation['aggregate_rmse']:.2f} volatility points)."
-        )
-    elif improvement_percent >= 0:
-        result["component_selection_note"] = (
-            "Three components retained: the fourth reduced validation RMSE by only "
-            f"{improvement_percent:.1f}%, below the "
-            f"{FOURTH_COMPONENT_MINIMUM_RMSE_IMPROVEMENT_PERCENT:.0f}% requirement "
-            f"({three_validation['aggregate_rmse']:.2f} versus "
-            f"{four_validation['aggregate_rmse']:.2f} volatility points)."
-        )
-    else:
-        result["component_selection_note"] = (
-            "Three components retained: the fourth worsened validation RMSE by "
-            f"{abs(improvement_percent):.1f}% "
-            f"({three_validation['aggregate_rmse']:.2f} versus "
-            f"{four_validation['aggregate_rmse']:.2f} volatility points)."
-        )
+    result["component_selection_note"] = (
+        f"{selected_count} components retained, {target_status} the "
+        f"{EXPLAINED_VARIANCE_TARGET_PERCENT:.0f}% target with "
+        f"{retained_variance:.2f}% explained variance. Ridge VAR(5) alpha "
+        f"{result['ridge_alpha']:g} was selected causally; expanding-window "
+        f"one-session RMSE is {selected_validation['aggregate_rmse']:.2f} versus "
+        f"{selected_validation['baseline_rmse']:.2f} for no change."
+    )
     return result
 
 
-def _read_bhavcopy_surface(content: bytes, symbol: str, report_date: date) -> np.ndarray | None:
-    use_columns = [
-        "FinInstrmTp",
-        "TckrSymb",
-        "XpryDt",
-        "StrkPric",
-        "OptnTp",
-        "ClsPric",
-        "UndrlygPric",
-        "OpnIntrst",
-        "TtlTradgVol",
-    ]
+def _normalize_bhavcopy_frame(
+    content: bytes,
+    *,
+    report_date: date | None = None,
+    spot_by_symbol: dict[str, float] | None = None,
+) -> tuple[pd.DataFrame, str]:
+    """Return current-schema option rows from either NSE bhavcopy generation."""
+
     with zipfile.ZipFile(io.BytesIO(content)) as archive:
         names = archive.namelist()
         if not names:
-            return None
-        frame = pd.read_csv(archive.open(names[0]), usecols=use_columns)
-    return surface_from_bhavcopy(frame, symbol, report_date)
+            raise ValueError("The NSE bhavcopy archive is empty.")
+        with archive.open(names[0]) as source:
+            columns = set(pd.read_csv(source, nrows=0).columns)
+        if "FinInstrmTp" in columns:
+            use_columns = [
+                "FinInstrmTp",
+                "TckrSymb",
+                "XpryDt",
+                "StrkPric",
+                "OptnTp",
+                "ClsPric",
+                "UndrlygPric",
+                "OpnIntrst",
+                "TtlTradgVol",
+            ]
+            with archive.open(names[0]) as source:
+                return pd.read_csv(source, usecols=use_columns), "NSE UDiFF bhavcopy"
+
+        option_type_column = (
+            "OPTION_TYP" if "OPTION_TYP" in columns else "OPTIONTYPE"
+        )
+        legacy_columns = {
+            "INSTRUMENT",
+            "SYMBOL",
+            "EXPIRY_DT",
+            "STRIKE_PR",
+            option_type_column,
+            "CLOSE",
+            "OPEN_INT",
+            "CONTRACTS",
+        }
+        if not legacy_columns.issubset(columns):
+            raise ValueError("The NSE bhavcopy schema is not recognized.")
+        with archive.open(names[0]) as source:
+            raw_legacy = pd.read_csv(source, usecols=sorted(legacy_columns))
+
+    # Legacy files do not include underlying spot. Yahoo back-adjusts old prices
+    # after splits and bonuses, putting them on a different scale from the
+    # contemporaneous option strikes. Use the nearest stock future in the same
+    # official file, discounted to spot, and retain Yahoo only as a fallback.
+    future_rows = raw_legacy[raw_legacy["INSTRUMENT"] == "FUTSTK"].copy()
+    future_rows["EXPIRY_DT"] = pd.to_datetime(future_rows["EXPIRY_DT"], errors="coerce")
+    future_rows["CLOSE"] = pd.to_numeric(future_rows["CLOSE"], errors="coerce")
+    future_rows = future_rows.dropna(subset=["EXPIRY_DT", "CLOSE"])
+    if report_date is not None:
+        future_rows = future_rows[future_rows["EXPIRY_DT"].dt.date >= report_date]
+    future_rows = future_rows.sort_values(["SYMBOL", "EXPIRY_DT"])
+    nearest_futures = future_rows.groupby("SYMBOL", sort=False).first().reset_index()
+    futures_spots: dict[str, float] = {}
+    for row in nearest_futures.itertuples(index=False):
+        years = (
+            max(0, (pd.Timestamp(row.EXPIRY_DT).date() - report_date).days) / 365.25
+            if report_date is not None
+            else 0.0
+        )
+        futures_spots[str(row.SYMBOL).upper()] = float(row.CLOSE) * math.exp(
+            -RISK_FREE_RATE * years
+        )
+
+    legacy = raw_legacy.rename(
+        columns={
+            "INSTRUMENT": "FinInstrmTp",
+            "SYMBOL": "TckrSymb",
+            "EXPIRY_DT": "XpryDt",
+            "STRIKE_PR": "StrkPric",
+            "OPTION_TYP": "OptnTp",
+            "OPTIONTYPE": "OptnTp",
+            "CLOSE": "ClsPric",
+            "OPEN_INT": "OpnIntrst",
+            "CONTRACTS": "TtlTradgVol",
+        }
+    )
+    legacy["FinInstrmTp"] = legacy["FinInstrmTp"].replace({"OPTSTK": "STO"})
+    spots = {str(key).upper(): float(value) for key, value in (spot_by_symbol or {}).items()}
+    spots.update(futures_spots)
+    legacy["UndrlygPric"] = legacy["TckrSymb"].astype(str).str.upper().map(spots)
+    return legacy, "NSE legacy F&O bhavcopy"
 
 
-def _candidate_dates() -> list[date]:
-    current = datetime.now(ZoneInfo("Asia/Kolkata")).date() - timedelta(days=1)
+def _read_bhavcopy_surfaces(
+    content: bytes,
+    symbols: list[str] | tuple[str, ...],
+    report_date: date,
+    *,
+    spot_by_symbol: dict[str, float] | None = None,
+) -> tuple[dict[str, np.ndarray], str]:
+    frame, source_format = _normalize_bhavcopy_frame(
+        content,
+        report_date=report_date,
+        spot_by_symbol=spot_by_symbol,
+    )
+    wanted = {symbol.upper() for symbol in symbols}
+    frame = frame[frame["TckrSymb"].astype(str).str.upper().isin(wanted)]
+    surfaces = {
+        symbol: surface
+        for symbol in sorted(wanted)
+        if (surface := surface_from_bhavcopy(frame, symbol, report_date)) is not None
+    }
+    return surfaces, source_format
+
+
+def _read_bhavcopy_surface(content: bytes, symbol: str, report_date: date) -> np.ndarray | None:
+    surfaces, _ = _read_bhavcopy_surfaces(content, [symbol], report_date)
+    return surfaces.get(symbol.upper())
+
+
+def _candidate_dates(*, now: datetime | None = None) -> list[date]:
+    now_ist = (now or datetime.now(UTC)).astimezone(ZoneInfo("Asia/Kolkata"))
+    current = now_ist.date()
+    if now_ist.time() < time(18, 0):
+        current -= timedelta(days=1)
     values = []
     while len(values) < CANDIDATE_WEEKDAYS:
         if current.weekday() < 5:
@@ -539,6 +701,241 @@ async def _historical_surface_for_date(symbol: str, report_date: date) -> np.nda
         return None
 
 
+async def _historical_bhavcopy_for_date(report_date: date) -> bytes | None:
+    """Fetch the official daily file, falling back to NSE's legacy archive."""
+
+    current_url = ARCHIVE_URL.format(date=f"{report_date:%Y%m%d}")
+    legacy_url = LEGACY_ARCHIVE_URL.format(
+        year=f"{report_date:%Y}",
+        month=f"{report_date:%b}".upper(),
+        day=f"{report_date:%d}",
+    )
+    # The UDiFF archive is available throughout 2024 onward. Avoid a guaranteed
+    # 404 against the current-format path for every older session.
+    urls = (current_url, legacy_url) if report_date.year >= 2024 else (legacy_url,)
+    for url in urls:
+        try:
+            return (await get_nse_client()._get(url)).content
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                continue
+            raise
+    return None
+
+
+def _backfill_dates(*, years: int, now: datetime | None = None) -> list[date]:
+    current = (now or datetime.now(UTC)).astimezone(ZoneInfo("Asia/Kolkata")).date()
+    try:
+        first = current.replace(year=current.year - years)
+    except ValueError:
+        first = current.replace(year=current.year - years, day=28)
+    values = []
+    while first <= current:
+        if first.weekday() < 5:
+            values.append(first)
+        first += timedelta(days=1)
+    return values
+
+
+def _history_cache_payload(symbol: str) -> tuple[FileCache, str, dict[date, np.ndarray]]:
+    cache = FileCache(get_settings().cache_path, "iv_surfaces")
+    key = cache_key(SURFACE_DATA_VERSION, symbol.upper())
+    payload = cache.get(key, None) or {}
+    values: dict[date, np.ndarray] = {}
+    for cached_date, cached_surface in zip(
+        payload.get("dates") or [],
+        payload.get("surfaces") or [],
+        strict=False,
+    ):
+        try:
+            parsed_date = date.fromisoformat(str(cached_date))
+            parsed_surface = np.asarray(cached_surface, dtype=float)
+        except (TypeError, ValueError):
+            continue
+        if parsed_surface.shape == (len(TENOR_DAYS), len(DELTA_BUCKETS)):
+            values[parsed_date] = parsed_surface
+    return cache, key, values
+
+
+def _persist_surface_histories(histories: dict[str, dict[date, np.ndarray]]) -> None:
+    for symbol, values in histories.items():
+        cache, key, _ = _history_cache_payload(symbol)
+        dated = sorted(values.items(), key=lambda item: item[0])[-TARGET_HISTORY_SURFACES:]
+        cache.put(
+            key,
+            {
+                "dates": [value.isoformat() for value, _ in dated],
+                "surfaces": [surface.tolist() for _, surface in dated],
+                "coverage": {
+                    "observations": len(dated),
+                    "first_date": dated[0][0].isoformat() if dated else None,
+                    "last_date": dated[-1][0].isoformat() if dated else None,
+                    "target_observations": TARGET_HISTORY_SURFACES,
+                },
+            },
+            source="NSE equity-derivatives daily bhavcopies (current and legacy)",
+            model_name=MODEL_NAME,
+        )
+
+
+def _adjusted_return_candles(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    candles = list(payload.get("candles") or [])
+    if not candles:
+        return []
+    values = pd.DataFrame(candles)
+    values["time"] = pd.to_datetime(values["time"], errors="coerce")
+    values["close"] = pd.to_numeric(values["close"], errors="coerce")
+    values = values.dropna(subset=["time", "close"]).sort_values("time")
+    if values.empty:
+        return []
+    # Yahoo's unadjusted series can contain mechanical split/bonus jumps. For
+    # path features we need economic returns, so neutralize only extreme moves
+    # that are close to a common corporate-action ratio.
+    ratios = values["close"] / values["close"].shift(1)
+    factors = np.ones(len(values), dtype=float)
+    corporate_ratios = np.asarray(
+        [0.1, 0.2, 0.25, 1 / 3, 0.4, 0.5, 2 / 3, 0.75, 0.8, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 10.0]
+    )
+    for index, ratio in enumerate(ratios.to_numpy(dtype=float)):
+        if index == 0 or not np.isfinite(ratio) or 0.67 <= ratio <= 1.5:
+            continue
+        nearest = float(corporate_ratios[np.argmin(np.abs(np.log(corporate_ratios / ratio)))])
+        if abs(math.log(ratio / nearest)) <= 0.08:
+            factors[index] = nearest
+    economic_returns = ratios.to_numpy(dtype=float) / factors - 1.0
+    adjusted = np.empty(len(values), dtype=float)
+    adjusted[0] = float(values.iloc[0]["close"])
+    for index in range(1, len(values)):
+        adjusted[index] = adjusted[index - 1] * (1.0 + economic_returns[index])
+    return [
+        {"time": timestamp.date().isoformat(), "close": float(close)}
+        for timestamp, close in zip(values["time"], adjusted, strict=True)
+    ]
+
+
+async def backfill_historical_surfaces(
+    symbols: list[str] | tuple[str, ...],
+    *,
+    years: int = HISTORY_BACKFILL_YEARS,
+    force: bool = False,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+) -> dict[str, Any]:
+    """Build long option histories date-first so every NSE file is fetched once."""
+
+    from app.services.market_data.india_trading import get_price_history
+
+    started = monotonic_time.monotonic()
+    selected = sorted({str(symbol).upper() for symbol in symbols if str(symbol).strip()})
+    histories = {symbol: _history_cache_payload(symbol)[2] for symbol in selected}
+    price_payloads = await asyncio.gather(
+        *(get_price_history(symbol, f"{symbol}.NS", "10Y") for symbol in selected)
+    )
+    spots: dict[str, dict[date, float]] = {}
+    for symbol, payload in zip(selected, price_payloads, strict=True):
+        spots[symbol] = {
+            date.fromisoformat(str(candle["time"])): float(candle["close"])
+            for candle in payload.get("candles") or []
+            if candle.get("time") and candle.get("close")
+        }
+
+    manifest_cache = FileCache(get_settings().cache_path, "iv_surface_backfill")
+    manifest_key = cache_key(
+        SURFACE_DATA_VERSION,
+        "paper-sample-date-first-v2",
+        str(years),
+        ",".join(selected),
+    )
+    manifest = manifest_cache.get(manifest_key, None) or {}
+    attempted = set() if force else set(manifest.get("attempted_dates") or [])
+    candidates = _backfill_dates(years=years)
+    pending = [
+        value
+        for value in candidates
+        if force
+        or (
+            value.isoformat() not in attempted
+            and not all(value in histories[symbol] for symbol in selected)
+        )
+    ]
+    downloaded_dates = 0
+    unavailable_dates = 0
+    parsed_surfaces = 0
+    formats: dict[str, int] = {}
+
+    for start in range(0, len(pending), BACKFILL_BATCH_DATES):
+        batch_dates = pending[start : start + BACKFILL_BATCH_DATES]
+        payloads = await asyncio.gather(
+            *(_historical_bhavcopy_for_date(value) for value in batch_dates),
+            return_exceptions=True,
+        )
+        for report_date, payload in zip(batch_dates, payloads, strict=True):
+            if isinstance(payload, BaseException):
+                logger.warning("IV history backfill failed for %s: %s", report_date, payload)
+                continue
+            attempted.add(report_date.isoformat())
+            if payload is None:
+                unavailable_dates += 1
+                continue
+            downloaded_dates += 1
+            spot_by_symbol = {
+                symbol: value
+                for symbol in selected
+                if (value := spots[symbol].get(report_date)) is not None
+            }
+            try:
+                parsed, source_format = await asyncio.to_thread(
+                    _read_bhavcopy_surfaces,
+                    payload,
+                    selected,
+                    report_date,
+                    spot_by_symbol=spot_by_symbol,
+                )
+            except (ValueError, KeyError, zipfile.BadZipFile, pd.errors.ParserError) as exc:
+                logger.warning("IV history parse failed for %s: %s", report_date, exc)
+                continue
+            formats[source_format] = formats.get(source_format, 0) + 1
+            for symbol, surface in parsed.items():
+                histories[symbol][report_date] = surface
+                parsed_surfaces += 1
+
+        _persist_surface_histories(histories)
+        manifest_cache.put(
+            manifest_key,
+            {"attempted_dates": sorted(attempted)},
+            source="NSE derivatives archive backfill manifest",
+            model_name=MODEL_NAME,
+        )
+        if progress is not None:
+            progress(
+                {
+                    "completed_dates": min(start + len(batch_dates), len(pending)),
+                    "pending_dates": len(pending),
+                    "parsed_surfaces": parsed_surfaces,
+                }
+            )
+
+    coverage = {
+        symbol: {
+            "observations": len(values),
+            "first_date": min(values).isoformat() if values else None,
+            "last_date": max(values).isoformat() if values else None,
+        }
+        for symbol, values in histories.items()
+    }
+    return {
+        "symbols": len(selected),
+        "requested_years": years,
+        "candidate_weekdays": len(candidates),
+        "pending_dates": len(pending),
+        "downloaded_dates": downloaded_dates,
+        "unavailable_dates": unavailable_dates,
+        "parsed_surfaces": parsed_surfaces,
+        "source_formats": formats,
+        "coverage": coverage,
+        "elapsed_seconds": round(monotonic_time.monotonic() - started, 2),
+    }
+
+
 async def load_historical_surfaces(
     symbol: str,
     *,
@@ -556,25 +953,9 @@ async def load_historical_surfaces(
     if cached is not None:
         return list(cached["dates"]), np.asarray(cached["surfaces"], dtype=float)
 
-    dated_surfaces: list[tuple[date, np.ndarray]] = []
-    candidate_dates = _candidate_dates()
-    # The shared NSE client enforces the configured exchange request rate.
-    for start in range(0, CANDIDATE_WEEKDAYS, 4):
-        batch_dates = candidate_dates[start : start + 4]
-        batch = await asyncio.gather(
-            *[_historical_surface_for_date(symbol, value) for value in batch_dates]
-        )
-        dated_surfaces.extend(
-            (value, surface)
-            for value, surface in zip(batch_dates, batch, strict=True)
-            if surface is not None
-        )
-        if len(dated_surfaces) >= TARGET_HISTORY_SURFACES:
-            break
-
     # A temporarily illiquid far expiry must not erase already verified daily
-    # surfaces. Merge the new exchange download with the last successful cache
-    # before retaining the most recent TARGET_HISTORY_SURFACES observations.
+    # surfaces. Seed the refresh with the last verified cache, download only
+    # missing sessions, then retain the newest TARGET_HISTORY_SURFACES values.
     merged_surfaces: dict[date, np.ndarray] = {}
     for cached_date, cached_surface in zip(
         stale_payload.get("dates") or [],
@@ -588,8 +969,22 @@ async def load_historical_surfaces(
             continue
         if parsed_surface.shape == (len(TENOR_DAYS), len(DELTA_BUCKETS)):
             merged_surfaces[parsed_date] = parsed_surface
-    for surface_date, surface in dated_surfaces:
-        merged_surfaces[surface_date] = surface
+    refresh_candidates = _candidate_dates()
+    if merged_surfaces:
+        refresh_candidates = refresh_candidates[:INCREMENTAL_REFRESH_WEEKDAYS]
+    candidate_dates = [value for value in refresh_candidates if value not in merged_surfaces]
+    # The shared NSE client enforces the configured exchange request rate.
+    for start in range(0, len(candidate_dates), 4):
+        batch_dates = candidate_dates[start : start + 4]
+        batch = await asyncio.gather(
+            *[_historical_surface_for_date(symbol, value) for value in batch_dates]
+        )
+        for surface_date, surface in zip(batch_dates, batch, strict=True):
+            if surface is not None:
+                merged_surfaces[surface_date] = surface
+        if len(merged_surfaces) >= TARGET_HISTORY_SURFACES:
+            break
+
     dated_surfaces = sorted(merged_surfaces.items(), key=lambda item: item[0])
     if len(dated_surfaces) > TARGET_HISTORY_SURFACES:
         dated_surfaces = dated_surfaces[-TARGET_HISTORY_SURFACES:]
@@ -1904,7 +2299,7 @@ def _unavailable_forecast(
         "validation_rmse_by_components": {},
         "fourth_component_improvement_percent": None,
         "component_selection_note": (
-            "Three-versus-four component selection could not be evaluated."
+            "Adaptive 3-8 component selection could not be evaluated."
         ),
         "comparisons": [],
         "strategy": _empty_strategy(
