@@ -241,6 +241,12 @@ export function IVModelValidationView() {
               <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Eligible stocks</p><p className="mt-2 font-mono text-xl font-semibold">{dynamic.eligibility.eligible_count}</p><p className="mt-1 text-[10px] text-muted-foreground">{dynamic.eligibility.required_surfaces_per_symbol} surfaces required</p></div>
               <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Completed stocks</p><p className="mt-2 font-mono text-xl font-semibold">{dynamic.completed_symbols}</p></div>
             </div>
+            {dynamic.assumption_warning ? (
+              <div className="flex gap-2 rounded-md border border-amber-500/30 bg-amber-50/60 p-3 text-xs leading-5 text-amber-950 dark:bg-amber-950/20 dark:text-amber-100">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                <p>{dynamic.assumption_warning} {dynamic.stationarity_summary?.rejected_at_5_percent}/{dynamic.stationarity_summary?.tests} Horváth–Kokoszka–Rice tests reject stationarity at 5%.</p>
+              </div>
+            ) : null}
             {dynamic.leaderboard.length ? (
               <div className="overflow-auto rounded-md border border-border/70">
                 <table className="w-full min-w-[620px] text-left text-[11px]">

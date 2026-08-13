@@ -1323,6 +1323,74 @@ def _replication_fingerprint(histories: dict[str, dict[str, Any]]) -> str:
     )
 
 
+def _stationarity_summary(report: dict[str, Any]) -> dict[str, Any]:
+    tests = [
+        test
+        for symbol_report in report.get("per_symbol") or []
+        for test in symbol_report.get("stationarity_tests") or []
+    ]
+    rejected = sum(
+        bool(test.get("rejects_stationarity_at_5_percent")) for test in tests
+    )
+    return {
+        "tests": len(tests),
+        "rejected_at_5_percent": rejected,
+        "all_pass": bool(tests) and rejected == 0,
+    }
+
+
+def _enrich_cached_replication(
+    report: dict[str, Any],
+    histories: dict[str, dict[str, Any]],
+) -> bool:
+    """Add diagnostics introduced after a long exact run without rerunning forecasts."""
+
+    changed = False
+    paper_design = report.get("paper_design") or {}
+    if "stationarity_test" not in paper_design:
+        paper_design["stationarity_test"] = (
+            "Horvath-Kokoszka-Rice with ftsa defaults and 1,000 Monte Carlo draws"
+        )
+        report["paper_design"] = paper_design
+        changed = True
+    for symbol_report in report.get("per_symbol") or []:
+        if symbol_report.get("stationarity_tests"):
+            continue
+        symbol = str(symbol_report.get("ticker") or "")
+        history = histories.get(symbol) or {}
+        surfaces = np.asarray(history.get("surfaces") or [], dtype=float)
+        if len(surfaces) < PAPER_TOTAL_OBSERVATIONS:
+            continue
+        paper_grid = prepare_nse_paper_grid(surfaces[-PAPER_TOTAL_OBSERVATIONS:])
+        symbol_report["stationarity_tests"] = [
+            {
+                "maturity_days": maturity_days,
+                **functional_stationarity_test(
+                    paper_grid[:, maturity_index, :],
+                    seed=20_220_711 + maturity_index,
+                ),
+            }
+            for maturity_index, maturity_days in enumerate(
+                NSE_REPLICATION_TENOR_DAYS
+            )
+        ]
+        changed = True
+    summary = _stationarity_summary(report)
+    if report.get("stationarity_summary") != summary:
+        report["stationarity_summary"] = summary
+        report["assumption_warning"] = (
+            None
+            if summary["all_pass"]
+            else (
+                "The functional stationarity null is rejected for one or more "
+                "maturity series. Dynamic long-run covariance results should be "
+                "treated as a robustness experiment, not production evidence."
+            )
+        )
+        changed = True
+    return changed
+
+
 def get_cached_nse_replication(
     histories: dict[str, dict[str, Any]],
     *,
@@ -1335,9 +1403,29 @@ def get_cached_nse_replication(
     if not force_refresh:
         exact = cache.get(key, None)
         if exact is not None:
+            if _enrich_cached_replication(exact, histories):
+                cache.put(
+                    key,
+                    exact,
+                    source="Official NSE F&O bhavcopy closing prices",
+                    model_name=PAPER_NAME,
+                )
+                cache.put(
+                    latest_key,
+                    exact,
+                    source="Official NSE F&O bhavcopy closing prices",
+                    model_name=PAPER_NAME,
+                )
             return exact
         latest = cache.get(latest_key, None)
         if latest is not None:
+            if _enrich_cached_replication(latest, histories):
+                cache.put(
+                    latest_key,
+                    latest,
+                    source="Official NSE F&O bhavcopy closing prices",
+                    model_name=PAPER_NAME,
+                )
             return latest
         return run_nse_replication({}) | {
             "eligibility": replication_eligibility(histories),

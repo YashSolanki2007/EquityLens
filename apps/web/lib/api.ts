@@ -904,6 +904,12 @@ export const IVModelEvaluationSchema = z.object({
       required_surfaces_per_symbol: z.number(),
     }),
     completed_symbols: z.number(),
+    stationarity_summary: z.object({
+      tests: z.number(),
+      rejected_at_5_percent: z.number(),
+      all_pass: z.boolean(),
+    }).optional(),
+    assumption_warning: z.string().nullable().optional(),
     failures: z.array(z.object({ ticker: z.string(), error: z.string() })),
     leaderboard: z.array(z.object({
       component_rule: z.string(),
