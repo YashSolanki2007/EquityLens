@@ -847,7 +847,7 @@ export const IVModelEvaluationSchema = z.object({
     limitation: z.string().optional(),
     strengths: z.array(z.string()),
     weaknesses: z.array(z.string()),
-  }),
+  }).optional(),
   thresholds: z.object({
     fpca_explained_variance_healthy_percent: z.number(),
     minimum_rmse_improvement_percent: z.number(),

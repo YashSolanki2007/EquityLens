@@ -53,7 +53,18 @@ export function IVModelValidationView() {
   const fpcaHealthy = (data.average_explained_variance_percent ?? 0) >= data.thresholds.fpca_explained_variance_healthy_percent;
   const varBeatsBaseline = (data.improvement_over_baseline_percent ?? -Infinity) > 0;
   const historical = data.historical_backtest;
-  const path = data.path_dependent_backtest;
+  const path = data.path_dependent_backtest ?? {
+    available: false,
+    verdict: "Awaiting API update",
+    verdict_detail:
+      "The FPCA report is available, but this API instance has not loaded the path-dependent SSVI backtest yet. Refresh after the API update completes.",
+    observations: 0,
+    excluded_for_gaps: 0,
+    source: "Official NSE F&O bhavcopies and underlying daily closes",
+    paper_url: "https://arxiv.org/abs/2312.15950",
+    strengths: [],
+    weaknesses: [],
+  };
   const collection = run.data?.collection;
 
   return (
