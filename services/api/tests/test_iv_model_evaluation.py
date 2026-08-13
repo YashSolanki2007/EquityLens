@@ -66,12 +66,15 @@ def test_historical_backtest_is_causal_and_reports_baseline_comparison():
     assert "not option-strategy P&L" in report["limitation"]
 
 
-def test_historical_backtest_rejects_irregular_surface_history():
+def test_historical_backtest_excludes_only_targets_affected_by_recent_gaps():
     history = _surface_history()
-    history["dates"][20] = "2026-08-01"
+    history["dates"][35:] = [
+        (date.fromisoformat(value) + timedelta(days=7)).isoformat()
+        for value in history["dates"][35:]
+    ]
 
     report = historical_walk_forward_backtest({"TEST": history})
 
-    assert report["available"] is False
-    assert report["observations"] == 0
-    assert report["excluded_for_gaps"] == 6
+    assert report["available"] is True
+    assert 0 < report["observations"] < 6
+    assert report["excluded_for_gaps"] > 0

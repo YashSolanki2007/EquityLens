@@ -772,6 +772,16 @@ export const IVModelEvaluationSchema = z.object({
   model_win_rate_percent: z.number().nullish(),
   verdict: z.string(),
   verdict_detail: z.string(),
+  surface_history_coverage: z.object({
+    symbols: z.number(),
+    total_surfaces: z.number(),
+    minimum_surfaces_per_symbol: z.number(),
+    maximum_surfaces_per_symbol: z.number(),
+    first_date: z.string().nullable(),
+    last_date: z.string().nullable(),
+    target_surfaces_per_symbol: z.number(),
+    source: z.string(),
+  }).optional(),
   historical_backtest: z.object({
     available: z.boolean(),
     verdict: z.string(),

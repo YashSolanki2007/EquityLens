@@ -1,4 +1,3 @@
-from datetime import date, timedelta
 
 import numpy as np
 import pandas as pd
@@ -6,6 +5,8 @@ import pandas as pd
 from app.schemas.trading import IVSurfaceForecastOut
 from app.services.market_data.path_dependent_ssvi import (
     MINIMUM_PARAMETER_SURFACES,
+    _ou_parameter_forecast,
+    _path_feature_matrix,
     calibrate_parsimonious_ssvi,
     fit_path_dependent_ssvi,
     parsimonious_ssvi_total_variance,
@@ -75,6 +76,61 @@ def test_path_features_exclude_the_unknown_target_return():
     )
 
     assert original == after_future_change
+
+
+def test_precomputed_feature_matrix_matches_single_date_features():
+    prices = _prices()
+    selected_dates = [item.date() for item in prices.index[-20::4]]
+
+    matrix = _path_feature_matrix(
+        prices,
+        selected_dates,
+        "a",
+        next_session=True,
+    )
+
+    expected = np.asarray(
+        [[1.0, *path_features(prices, value, "a", next_session=True)] for value in selected_dates]
+    )
+    np.testing.assert_allclose(matrix, expected, rtol=0, atol=1e-12)
+
+
+def test_log_parameter_forecast_is_bounded_before_exponentiation():
+    values = np.linspace(0.8, 1.2, 30)
+    features = np.column_stack(
+        [np.ones(30), np.linspace(0, 1e6, 30), np.full(30, 0.01)]
+    )
+
+    predicted, _ = _ou_parameter_forecast(
+        values,
+        features,
+        np.asarray([1.0, 1e12, 0.01]),
+        logarithmic=True,
+    )
+
+    assert 0.02 <= predicted <= 2.5
+
+
+def test_path_forecast_ignores_unwarmed_activity_sentinel():
+    values = np.asarray([9.0, 0.05, 0.055, 0.052, 0.054])
+    features = np.asarray(
+        [
+            [1.0, 0.0, 1e-8],
+            [1.0, 0.001, 0.012],
+            [1.0, 0.002, 0.013],
+            [1.0, -0.001, 0.011],
+            [1.0, 0.0, 0.012],
+        ]
+    )
+
+    predicted, _ = _ou_parameter_forecast(
+        values,
+        features,
+        np.asarray([1.0, 0.001, 0.012]),
+        logarithmic=False,
+    )
+
+    assert predicted < 0.2
 
 
 def test_path_dependent_fit_returns_causal_validation_and_arbitrage_checks():

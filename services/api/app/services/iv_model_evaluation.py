@@ -20,6 +20,7 @@ from app.services.market_data.iv_surface import (
     MODEL_NAME,
     MODEL_VERSION,
     SURFACE_DATA_VERSION,
+    TARGET_HISTORY_SURFACES,
     _fit_fpca_core,
     _historical_surface_for_date,
     _select_component_count,
@@ -39,6 +40,7 @@ MEANINGFUL_MOVE_VOL_POINTS = 0.25
 COLLECTION_LOCK = asyncio.Lock()
 HISTORICAL_MAX_GAP_DAYS = 4
 HISTORICAL_BOOTSTRAP_SAMPLES = 5_000
+HISTORICAL_BACKTEST_VERSION = "historical-fpca-v2-economic-verdict"
 
 # A sector-diverse, liquid subset keeps the daily exchange workload bounded while
 # still producing 25 independent next-session observations per completed session.
@@ -180,7 +182,10 @@ def historical_walk_forward_backtest(
             continue
         smoothed = np.asarray([_smooth_surface(surface) for surface in surfaces])
         for target_index in range(MINIMUM_VALIDATION_SURFACES, len(smoothed)):
-            observed_dates = dates[: target_index + 1]
+            # A single old missing surface must not invalidate every later target
+            # in a multi-year history. Only the VAR(5) lag window and target must
+            # represent consecutive observed sessions.
+            observed_dates = dates[max(0, target_index - 6) : target_index + 1]
             if any(
                 not 0 < (right - left).days <= HISTORICAL_MAX_GAP_DAYS
                 for left, right in zip(observed_dates, observed_dates[1:], strict=False)
@@ -305,6 +310,13 @@ def historical_walk_forward_backtest(
             "The adaptive FPCA representation captures surface variance, but its "
             "VAR forecast did not reduce next-session error versus no change."
         )
+    elif statistically_positive:
+        verdict = "Statistically positive but economically small"
+        verdict_detail = (
+            "FPCA–VAR beat no-change with a positive date-clustered confidence "
+            "interval, but the RMSE improvement remains below the configured 10% "
+            "production threshold."
+        )
     else:
         verdict = "Historical edge is inconclusive"
         verdict_detail = (
@@ -371,8 +383,44 @@ def cached_surface_histories() -> dict[str, dict[str, Any]]:
     return histories
 
 
-def cached_historical_backtest() -> dict[str, Any]:
-    return historical_walk_forward_backtest(cached_surface_histories())
+def _history_fingerprint(histories: dict[str, dict[str, Any]]) -> str:
+    return ",".join(
+        f"{symbol}:{len(history.get('dates') or [])}:"
+        f"{(history.get('dates') or [''])[0]}:{(history.get('dates') or [''])[-1]}"
+        for symbol, history in sorted(histories.items())
+    )
+
+
+def cached_historical_backtest(*, force_refresh: bool = False) -> dict[str, Any]:
+    histories = cached_surface_histories()
+    cache = FileCache(get_settings().cache_path, "iv_model_evaluation")
+    key = cache_key(
+        MODEL_VERSION,
+        HISTORICAL_BACKTEST_VERSION,
+        "historical-backtest",
+        _history_fingerprint(histories),
+    )
+    latest_key = cache_key(
+        MODEL_VERSION,
+        HISTORICAL_BACKTEST_VERSION,
+        "historical-backtest-latest",
+    )
+    if not force_refresh:
+        cached = cache.get(key, 6 * 60 * 60)
+        if cached is not None:
+            return cached
+        latest = cache.get(latest_key, None)
+        if latest is not None:
+            return latest
+    result = historical_walk_forward_backtest(histories)
+    for cache_entry in (key, latest_key):
+        cache.put(
+            cache_entry,
+            result,
+            source="Official NSE F&O bhavcopy closing prices",
+            model_name=MODEL_NAME,
+        )
+    return result
 
 
 async def path_dependent_historical_backtest(
@@ -579,6 +627,23 @@ async def evaluation_report() -> dict[str, Any]:
         and item.baseline_rmse is not None
         and item.model_rmse < item.baseline_rmse
     )
+    histories = cached_surface_histories()
+    history_counts = [len(item.get("dates") or []) for item in histories.values()]
+    history_dates = [
+        date.fromisoformat(str(value))
+        for item in histories.values()
+        for value in (item.get("dates") or [])
+    ]
+    surface_history_coverage = {
+        "symbols": len(histories),
+        "total_surfaces": sum(history_counts),
+        "minimum_surfaces_per_symbol": min(history_counts) if history_counts else 0,
+        "maximum_surfaces_per_symbol": max(history_counts) if history_counts else 0,
+        "first_date": min(history_dates).isoformat() if history_dates else None,
+        "last_date": max(history_dates).isoformat() if history_dates else None,
+        "target_surfaces_per_symbol": TARGET_HISTORY_SURFACES,
+        "source": "Official NSE current and legacy F&O bhavcopies",
+    }
     historical_backtest, path_dependent_backtest = await asyncio.gather(
         asyncio.to_thread(cached_historical_backtest),
         path_dependent_historical_backtest(),
@@ -635,6 +700,7 @@ async def evaluation_report() -> dict[str, Any]:
         "model_win_rate_percent": model_wins / len(scored) * 100 if scored else None,
         "verdict": verdict,
         "verdict_detail": verdict_detail,
+        "surface_history_coverage": surface_history_coverage,
         "historical_backtest": historical_backtest,
         "path_dependent_backtest": path_dependent_backtest,
         "thresholds": {

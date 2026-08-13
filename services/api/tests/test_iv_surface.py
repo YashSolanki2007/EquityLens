@@ -1,3 +1,5 @@
+import io
+import zipfile
 from datetime import UTC, date, datetime, timedelta
 
 import numpy as np
@@ -12,8 +14,10 @@ from app.services.market_data.iv_surface import (
     MINIMUM_COMPONENT_COUNT,
     RIDGE_ALPHA_CANDIDATES,
     TENOR_DAYS,
+    _backfill_dates,
     _black_scholes_price,
     _candidate_dates,
+    _normalize_bhavcopy_frame,
     _parse_market_lot_sizes,
     _select_component_count,
     build_iv_strategies,
@@ -139,6 +143,39 @@ def test_history_candidates_include_same_day_only_after_bhavcopy_window():
 
     assert before_publish[0] == date(2026, 8, 10)
     assert after_publish[0] == date(2026, 8, 11)
+
+
+def test_ten_year_backfill_dates_cover_the_full_weekday_history():
+    values = _backfill_dates(
+        years=10,
+        now=datetime(2026, 8, 13, 12, 0, tzinfo=UTC),
+    )
+
+    assert values[0] == date(2016, 8, 15)
+    assert values[-1] == date(2026, 8, 13)
+    assert len(values) > 2_600
+    assert all(value.weekday() < 5 for value in values)
+
+
+def test_legacy_bhavcopy_is_normalized_with_historical_underlying_close():
+    legacy = (
+        "INSTRUMENT,SYMBOL,EXPIRY_DT,STRIKE_PR,OPTION_TYP,CLOSE,CONTRACTS,OPEN_INT\n"
+        "OPTSTK,TEST,26-AUG-2021,100,CE,5.25,100,5000\n"
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("fo13AUG2021bhav.csv", legacy)
+
+    frame, source = _normalize_bhavcopy_frame(
+        buffer.getvalue(),
+        spot_by_symbol={"TEST": 98.5},
+    )
+
+    assert source == "NSE legacy F&O bhavcopy"
+    assert frame.loc[0, "FinInstrmTp"] == "STO"
+    assert frame.loc[0, "TckrSymb"] == "TEST"
+    assert frame.loc[0, "UndrlygPric"] == 98.5
+    assert frame.loc[0, "TtlTradgVol"] == 100
 
 
 def test_component_selection_uses_smallest_model_reaching_99_percent():

@@ -23,6 +23,12 @@ function dateTime(value: string) {
   }).format(new Date(value));
 }
 
+function dateOnly(value?: string | null) {
+  return value
+    ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeZone: "Asia/Kolkata" }).format(new Date(`${value}T12:00:00+05:30`))
+    : "—";
+}
+
 export function IVModelValidationView() {
   const queryClient = useQueryClient();
   const report = useQuery({
@@ -86,11 +92,12 @@ export function IVModelValidationView() {
             {run.isPending ? "Running causal backtests…" : "Run collection and both backtests"}
           </Button>
         </div>
-        <div className="grid gap-px bg-border/70 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-px bg-border/70 sm:grid-cols-2 lg:grid-cols-5">
           {[
             ["Clean forecasts scored", `${data.scored_forecasts}/${data.evidence_target}`],
             ["Pending next session", String(data.pending_forecasts)],
             ["Stocks represented", String(data.covered_symbols)],
+            ["Historical surfaces", String(data.surface_history_coverage?.total_surfaces ?? 0)],
             ["Model win rate", metric(data.model_win_rate_percent, "%")],
           ].map(([label, value]) => (
             <div key={label} className="bg-card px-5 py-4">
@@ -114,6 +121,11 @@ export function IVModelValidationView() {
           </div>
           <div className="mt-2 flex justify-between font-mono text-[10px] text-muted-foreground"><span>{data.scored_forecasts} scored</span><span>{data.evidence_target} minimum</span></div>
           <p className="mt-4 text-sm leading-6">{data.verdict_detail}</p>
+          {data.surface_history_coverage ? (
+            <p className="mt-3 rounded-md bg-muted/30 px-3 py-2 text-xs leading-5 text-muted-foreground">
+              Historical data coverage: {data.surface_history_coverage.symbols} stocks, {data.surface_history_coverage.minimum_surfaces_per_symbol}–{data.surface_history_coverage.maximum_surfaces_per_symbol} surfaces per stock, from {dateOnly(data.surface_history_coverage.first_date)} through {dateOnly(data.surface_history_coverage.last_date)}. Target capacity is {data.surface_history_coverage.target_surfaces_per_symbol} per stock.
+            </p>
+          ) : null}
           {collection ? (
             <p className="mt-3 rounded-md bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
               Latest run: {collection.created} new forecasts recorded, {collection.skipped} skipped from {collection.attempted} attempted. A skipped forecast is never backdated after its session begins.
@@ -196,7 +208,7 @@ export function IVModelValidationView() {
                 </table>
               </div>
               <p className="text-[10px] leading-4 text-muted-foreground">
-                {historical.methodology} Data: {historical.source}. {historical.excluded_for_gaps} candidate forecasts were excluded because their history contained gaps longer than four calendar days. {historical.limitation}
+                {historical.methodology} Data: {historical.source}. {historical.excluded_for_gaps} candidate forecasts were excluded because their immediate VAR lag window contained gaps longer than four calendar days. {historical.limitation}
               </p>
             </>
           ) : null}

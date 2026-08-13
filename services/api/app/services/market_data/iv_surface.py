@@ -22,7 +22,9 @@ import csv
 import io
 import logging
 import math
+import time as monotonic_time
 import zipfile
+from collections.abc import Callable
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -50,7 +52,11 @@ PAPER_URL = (
     "MIM_Functional-PCA-Implied-Volatility-Surface-Prediction_051920.pdf"
 )
 ARCHIVE_URL = (
-    "https://nsearchives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_{date}_F_0000.csv.zip"
+    "https://archives.nseindia.com/content/fo/BhavCopy_NSE_FO_0_0_0_{date}_F_0000.csv.zip"
+)
+LEGACY_ARCHIVE_URL = (
+    "https://archives.nseindia.com/content/historical/DERIVATIVES/"
+    "{year}/{month}/fo{day}{month}{year}bhav.csv.zip"
 )
 FNO_MARKET_LOTS_URL = "https://nsearchives.nseindia.com/content/fo/fo_mktlots.csv"
 
@@ -64,8 +70,14 @@ DELTA_BUCKETS = (
     ("25Δ call", "call", 0.25),
     ("10Δ call", "call", 0.10),
 )
-TARGET_HISTORY_SURFACES = 50
-CANDIDATE_WEEKDAYS = 120
+# Five years is the longest unadjusted daily underlying history currently loaded
+# for all covered stocks. The option history is collected independently from NSE
+# bhavcopies and persisted, so request-time forecasts never repeat the backfill.
+TARGET_HISTORY_SURFACES = 2_500
+HISTORY_BACKFILL_YEARS = 10
+CANDIDATE_WEEKDAYS = 2_800
+INCREMENTAL_REFRESH_WEEKDAYS = 15
+BACKFILL_BATCH_DATES = 4
 MINIMUM_HISTORY_SURFACES = 35
 MINIMUM_VALIDATION_SURFACES = MINIMUM_HISTORY_SURFACES + 1
 HISTORY_TTL_SECONDS = 24 * 60 * 60
@@ -538,24 +550,117 @@ def fit_fpca_var(surfaces: np.ndarray) -> dict[str, Any]:
     return result
 
 
-def _read_bhavcopy_surface(content: bytes, symbol: str, report_date: date) -> np.ndarray | None:
-    use_columns = [
-        "FinInstrmTp",
-        "TckrSymb",
-        "XpryDt",
-        "StrkPric",
-        "OptnTp",
-        "ClsPric",
-        "UndrlygPric",
-        "OpnIntrst",
-        "TtlTradgVol",
-    ]
+def _normalize_bhavcopy_frame(
+    content: bytes,
+    *,
+    report_date: date | None = None,
+    spot_by_symbol: dict[str, float] | None = None,
+) -> tuple[pd.DataFrame, str]:
+    """Return current-schema option rows from either NSE bhavcopy generation."""
+
     with zipfile.ZipFile(io.BytesIO(content)) as archive:
         names = archive.namelist()
         if not names:
-            return None
-        frame = pd.read_csv(archive.open(names[0]), usecols=use_columns)
-    return surface_from_bhavcopy(frame, symbol, report_date)
+            raise ValueError("The NSE bhavcopy archive is empty.")
+        with archive.open(names[0]) as source:
+            columns = set(pd.read_csv(source, nrows=0).columns)
+        if "FinInstrmTp" in columns:
+            use_columns = [
+                "FinInstrmTp",
+                "TckrSymb",
+                "XpryDt",
+                "StrkPric",
+                "OptnTp",
+                "ClsPric",
+                "UndrlygPric",
+                "OpnIntrst",
+                "TtlTradgVol",
+            ]
+            with archive.open(names[0]) as source:
+                return pd.read_csv(source, usecols=use_columns), "NSE UDiFF bhavcopy"
+
+        legacy_columns = {
+            "INSTRUMENT",
+            "SYMBOL",
+            "EXPIRY_DT",
+            "STRIKE_PR",
+            "OPTION_TYP",
+            "CLOSE",
+            "OPEN_INT",
+            "CONTRACTS",
+        }
+        if not legacy_columns.issubset(columns):
+            raise ValueError("The NSE bhavcopy schema is not recognized.")
+        with archive.open(names[0]) as source:
+            raw_legacy = pd.read_csv(source, usecols=sorted(legacy_columns))
+
+    # Legacy files do not include underlying spot. Yahoo back-adjusts old prices
+    # after splits and bonuses, putting them on a different scale from the
+    # contemporaneous option strikes. Use the nearest stock future in the same
+    # official file, discounted to spot, and retain Yahoo only as a fallback.
+    future_rows = raw_legacy[raw_legacy["INSTRUMENT"] == "FUTSTK"].copy()
+    future_rows["EXPIRY_DT"] = pd.to_datetime(future_rows["EXPIRY_DT"], errors="coerce")
+    future_rows["CLOSE"] = pd.to_numeric(future_rows["CLOSE"], errors="coerce")
+    future_rows = future_rows.dropna(subset=["EXPIRY_DT", "CLOSE"])
+    if report_date is not None:
+        future_rows = future_rows[future_rows["EXPIRY_DT"].dt.date >= report_date]
+    future_rows = future_rows.sort_values(["SYMBOL", "EXPIRY_DT"])
+    nearest_futures = future_rows.groupby("SYMBOL", sort=False).first().reset_index()
+    futures_spots: dict[str, float] = {}
+    for row in nearest_futures.itertuples(index=False):
+        years = (
+            max(0, (pd.Timestamp(row.EXPIRY_DT).date() - report_date).days) / 365.25
+            if report_date is not None
+            else 0.0
+        )
+        futures_spots[str(row.SYMBOL).upper()] = float(row.CLOSE) * math.exp(
+            -RISK_FREE_RATE * years
+        )
+
+    legacy = raw_legacy.rename(
+        columns={
+            "INSTRUMENT": "FinInstrmTp",
+            "SYMBOL": "TckrSymb",
+            "EXPIRY_DT": "XpryDt",
+            "STRIKE_PR": "StrkPric",
+            "OPTION_TYP": "OptnTp",
+            "CLOSE": "ClsPric",
+            "OPEN_INT": "OpnIntrst",
+            "CONTRACTS": "TtlTradgVol",
+        }
+    )
+    legacy["FinInstrmTp"] = legacy["FinInstrmTp"].replace({"OPTSTK": "STO"})
+    spots = {str(key).upper(): float(value) for key, value in (spot_by_symbol or {}).items()}
+    spots.update(futures_spots)
+    legacy["UndrlygPric"] = legacy["TckrSymb"].astype(str).str.upper().map(spots)
+    return legacy, "NSE legacy F&O bhavcopy"
+
+
+def _read_bhavcopy_surfaces(
+    content: bytes,
+    symbols: list[str] | tuple[str, ...],
+    report_date: date,
+    *,
+    spot_by_symbol: dict[str, float] | None = None,
+) -> tuple[dict[str, np.ndarray], str]:
+    frame, source_format = _normalize_bhavcopy_frame(
+        content,
+        report_date=report_date,
+        spot_by_symbol=spot_by_symbol,
+    )
+    wanted = {symbol.upper() for symbol in symbols}
+    frame = frame[frame["TckrSymb"].astype(str).str.upper().isin(wanted)]
+    surfaces = {
+        symbol: surface
+        for symbol in sorted(wanted)
+        if (surface := surface_from_bhavcopy(frame, symbol, report_date)) is not None
+    }
+    return surfaces, source_format
+
+
+def _read_bhavcopy_surface(content: bytes, symbol: str, report_date: date) -> np.ndarray | None:
+    surfaces, _ = _read_bhavcopy_surfaces(content, [symbol], report_date)
+    return surfaces.get(symbol.upper())
 
 
 def _candidate_dates(*, now: datetime | None = None) -> list[date]:
@@ -591,6 +696,241 @@ async def _historical_surface_for_date(symbol: str, report_date: date) -> np.nda
         return None
 
 
+async def _historical_bhavcopy_for_date(report_date: date) -> bytes | None:
+    """Fetch the official daily file, falling back to NSE's legacy archive."""
+
+    current_url = ARCHIVE_URL.format(date=f"{report_date:%Y%m%d}")
+    legacy_url = LEGACY_ARCHIVE_URL.format(
+        year=f"{report_date:%Y}",
+        month=f"{report_date:%b}".upper(),
+        day=f"{report_date:%d}",
+    )
+    # The UDiFF archive is available throughout 2024 onward. Avoid a guaranteed
+    # 404 against the current-format path for every older session.
+    urls = (current_url, legacy_url) if report_date.year >= 2024 else (legacy_url,)
+    for url in urls:
+        try:
+            return (await get_nse_client()._get(url)).content
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                continue
+            raise
+    return None
+
+
+def _backfill_dates(*, years: int, now: datetime | None = None) -> list[date]:
+    current = (now or datetime.now(UTC)).astimezone(ZoneInfo("Asia/Kolkata")).date()
+    try:
+        first = current.replace(year=current.year - years)
+    except ValueError:
+        first = current.replace(year=current.year - years, day=28)
+    values = []
+    while first <= current:
+        if first.weekday() < 5:
+            values.append(first)
+        first += timedelta(days=1)
+    return values
+
+
+def _history_cache_payload(symbol: str) -> tuple[FileCache, str, dict[date, np.ndarray]]:
+    cache = FileCache(get_settings().cache_path, "iv_surfaces")
+    key = cache_key(SURFACE_DATA_VERSION, symbol.upper())
+    payload = cache.get(key, None) or {}
+    values: dict[date, np.ndarray] = {}
+    for cached_date, cached_surface in zip(
+        payload.get("dates") or [],
+        payload.get("surfaces") or [],
+        strict=False,
+    ):
+        try:
+            parsed_date = date.fromisoformat(str(cached_date))
+            parsed_surface = np.asarray(cached_surface, dtype=float)
+        except (TypeError, ValueError):
+            continue
+        if parsed_surface.shape == (len(TENOR_DAYS), len(DELTA_BUCKETS)):
+            values[parsed_date] = parsed_surface
+    return cache, key, values
+
+
+def _persist_surface_histories(histories: dict[str, dict[date, np.ndarray]]) -> None:
+    for symbol, values in histories.items():
+        cache, key, _ = _history_cache_payload(symbol)
+        dated = sorted(values.items(), key=lambda item: item[0])[-TARGET_HISTORY_SURFACES:]
+        cache.put(
+            key,
+            {
+                "dates": [value.isoformat() for value, _ in dated],
+                "surfaces": [surface.tolist() for _, surface in dated],
+                "coverage": {
+                    "observations": len(dated),
+                    "first_date": dated[0][0].isoformat() if dated else None,
+                    "last_date": dated[-1][0].isoformat() if dated else None,
+                    "target_observations": TARGET_HISTORY_SURFACES,
+                },
+            },
+            source="NSE equity-derivatives daily bhavcopies (current and legacy)",
+            model_name=MODEL_NAME,
+        )
+
+
+def _adjusted_return_candles(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    candles = list(payload.get("candles") or [])
+    if not candles:
+        return []
+    values = pd.DataFrame(candles)
+    values["time"] = pd.to_datetime(values["time"], errors="coerce")
+    values["close"] = pd.to_numeric(values["close"], errors="coerce")
+    values = values.dropna(subset=["time", "close"]).sort_values("time")
+    if values.empty:
+        return []
+    # Yahoo's unadjusted series can contain mechanical split/bonus jumps. For
+    # path features we need economic returns, so neutralize only extreme moves
+    # that are close to a common corporate-action ratio.
+    ratios = values["close"] / values["close"].shift(1)
+    factors = np.ones(len(values), dtype=float)
+    corporate_ratios = np.asarray(
+        [0.1, 0.2, 0.25, 1 / 3, 0.4, 0.5, 2 / 3, 0.75, 0.8, 1.25, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 10.0]
+    )
+    for index, ratio in enumerate(ratios.to_numpy(dtype=float)):
+        if index == 0 or not np.isfinite(ratio) or 0.67 <= ratio <= 1.5:
+            continue
+        nearest = float(corporate_ratios[np.argmin(np.abs(np.log(corporate_ratios / ratio)))])
+        if abs(math.log(ratio / nearest)) <= 0.08:
+            factors[index] = nearest
+    economic_returns = ratios.to_numpy(dtype=float) / factors - 1.0
+    adjusted = np.empty(len(values), dtype=float)
+    adjusted[0] = float(values.iloc[0]["close"])
+    for index in range(1, len(values)):
+        adjusted[index] = adjusted[index - 1] * (1.0 + economic_returns[index])
+    return [
+        {"time": timestamp.date().isoformat(), "close": float(close)}
+        for timestamp, close in zip(values["time"], adjusted, strict=True)
+    ]
+
+
+async def backfill_historical_surfaces(
+    symbols: list[str] | tuple[str, ...],
+    *,
+    years: int = HISTORY_BACKFILL_YEARS,
+    force: bool = False,
+    progress: Callable[[dict[str, Any]], None] | None = None,
+) -> dict[str, Any]:
+    """Build long option histories date-first so every NSE file is fetched once."""
+
+    from app.services.market_data.india_trading import get_price_history
+
+    started = monotonic_time.monotonic()
+    selected = sorted({str(symbol).upper() for symbol in symbols if str(symbol).strip()})
+    histories = {symbol: _history_cache_payload(symbol)[2] for symbol in selected}
+    price_payloads = await asyncio.gather(
+        *(get_price_history(symbol, f"{symbol}.NS", "10Y") for symbol in selected)
+    )
+    spots: dict[str, dict[date, float]] = {}
+    for symbol, payload in zip(selected, price_payloads, strict=True):
+        spots[symbol] = {
+            date.fromisoformat(str(candle["time"])): float(candle["close"])
+            for candle in payload.get("candles") or []
+            if candle.get("time") and candle.get("close")
+        }
+
+    manifest_cache = FileCache(get_settings().cache_path, "iv_surface_backfill")
+    manifest_key = cache_key(
+        SURFACE_DATA_VERSION,
+        "five-year-date-first",
+        str(years),
+        ",".join(selected),
+    )
+    manifest = manifest_cache.get(manifest_key, None) or {}
+    attempted = set() if force else set(manifest.get("attempted_dates") or [])
+    candidates = _backfill_dates(years=years)
+    pending = [
+        value
+        for value in candidates
+        if force
+        or (
+            value.isoformat() not in attempted
+            and not all(value in histories[symbol] for symbol in selected)
+        )
+    ]
+    downloaded_dates = 0
+    unavailable_dates = 0
+    parsed_surfaces = 0
+    formats: dict[str, int] = {}
+
+    for start in range(0, len(pending), BACKFILL_BATCH_DATES):
+        batch_dates = pending[start : start + BACKFILL_BATCH_DATES]
+        payloads = await asyncio.gather(
+            *(_historical_bhavcopy_for_date(value) for value in batch_dates),
+            return_exceptions=True,
+        )
+        for report_date, payload in zip(batch_dates, payloads, strict=True):
+            if isinstance(payload, BaseException):
+                logger.warning("IV history backfill failed for %s: %s", report_date, payload)
+                continue
+            attempted.add(report_date.isoformat())
+            if payload is None:
+                unavailable_dates += 1
+                continue
+            downloaded_dates += 1
+            spot_by_symbol = {
+                symbol: value
+                for symbol in selected
+                if (value := spots[symbol].get(report_date)) is not None
+            }
+            try:
+                parsed, source_format = await asyncio.to_thread(
+                    _read_bhavcopy_surfaces,
+                    payload,
+                    selected,
+                    report_date,
+                    spot_by_symbol=spot_by_symbol,
+                )
+            except (ValueError, KeyError, zipfile.BadZipFile, pd.errors.ParserError) as exc:
+                logger.warning("IV history parse failed for %s: %s", report_date, exc)
+                continue
+            formats[source_format] = formats.get(source_format, 0) + 1
+            for symbol, surface in parsed.items():
+                histories[symbol][report_date] = surface
+                parsed_surfaces += 1
+
+        _persist_surface_histories(histories)
+        manifest_cache.put(
+            manifest_key,
+            {"attempted_dates": sorted(attempted)},
+            source="NSE derivatives archive backfill manifest",
+            model_name=MODEL_NAME,
+        )
+        if progress is not None:
+            progress(
+                {
+                    "completed_dates": min(start + len(batch_dates), len(pending)),
+                    "pending_dates": len(pending),
+                    "parsed_surfaces": parsed_surfaces,
+                }
+            )
+
+    coverage = {
+        symbol: {
+            "observations": len(values),
+            "first_date": min(values).isoformat() if values else None,
+            "last_date": max(values).isoformat() if values else None,
+        }
+        for symbol, values in histories.items()
+    }
+    return {
+        "symbols": len(selected),
+        "requested_years": years,
+        "candidate_weekdays": len(candidates),
+        "pending_dates": len(pending),
+        "downloaded_dates": downloaded_dates,
+        "unavailable_dates": unavailable_dates,
+        "parsed_surfaces": parsed_surfaces,
+        "source_formats": formats,
+        "coverage": coverage,
+        "elapsed_seconds": round(monotonic_time.monotonic() - started, 2),
+    }
+
+
 async def load_historical_surfaces(
     symbol: str,
     *,
@@ -624,9 +964,10 @@ async def load_historical_surfaces(
             continue
         if parsed_surface.shape == (len(TENOR_DAYS), len(DELTA_BUCKETS)):
             merged_surfaces[parsed_date] = parsed_surface
-    candidate_dates = [
-        value for value in _candidate_dates() if value not in merged_surfaces
-    ]
+    refresh_candidates = _candidate_dates()
+    if merged_surfaces:
+        refresh_candidates = refresh_candidates[:INCREMENTAL_REFRESH_WEEKDAYS]
+    candidate_dates = [value for value in refresh_candidates if value not in merged_surfaces]
     # The shared NSE client enforces the configured exchange request rate.
     for start in range(0, len(candidate_dates), 4):
         batch_dates = candidate_dates[start : start + 4]

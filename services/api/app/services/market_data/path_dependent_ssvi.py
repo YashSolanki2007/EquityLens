@@ -40,6 +40,7 @@ from app.services.market_data.iv_surface import (
     MAX_IV_PERCENT,
     MINIMUM_VALIDATION_SURFACES,
     TENOR_DAYS,
+    _adjusted_return_candles,
     _empty_strategy,
     _fit_fpca_core,
     _interpolate_tenor,
@@ -53,7 +54,7 @@ from app.services.market_data.iv_surface import (
 )
 
 MODEL_NAME = "Path-dependent parsimonious SSVI (PDV + OU/Jacobi conditional mean)"
-MODEL_VERSION = "nse-path-dependent-ssvi-v1"
+MODEL_VERSION = "nse-path-dependent-ssvi-v2-full-daily-warmup"
 PAPER_URL = "https://arxiv.org/abs/2312.15950"
 
 # The paper finds the squared-return feature needs at least ~1,000 business
@@ -272,6 +273,46 @@ def path_features(
     return trend, max(activity, 1e-8)
 
 
+def _path_feature_matrix(
+    price_history: dict[str, Any] | pd.Series,
+    history_dates: list[date],
+    parameter: str,
+    *,
+    next_session: bool,
+) -> np.ndarray:
+    """Precompute causal path features once for a long historical backtest."""
+
+    prices = _price_series(price_history)
+    price_values = prices.to_numpy(dtype=float)
+    returns = np.diff(price_values) / price_values[:-1]
+    return_dates = prices.index[1:].to_numpy(dtype="datetime64[D]")
+    settings = KERNELS[parameter]
+    shift = 1 if next_session else 0
+    rows = []
+    for value in history_dates:
+        target = np.datetime64(value.isoformat(), "D")
+        count = int(np.searchsorted(return_dates, target, side="right"))
+        usable_returns = returns[:count]
+        trend = _tspl_feature(
+            usable_returns,
+            alpha=settings["alpha_trend"],
+            delta=settings["delta_trend"],
+            squared=False,
+            cutoff=TREND_CUTOFF_DAYS,
+            shift=shift,
+        )
+        activity = _tspl_feature(
+            usable_returns,
+            alpha=settings["alpha_activity"],
+            delta=settings["delta_activity"],
+            squared=True,
+            cutoff=ACTIVITY_CUTOFF_DAYS,
+            shift=shift,
+        )
+        rows.append([1.0, trend, max(activity, 1e-8)])
+    return np.asarray(rows, dtype=float)
+
+
 def _ridge_coefficients(x: np.ndarray, y: np.ndarray, alpha: float = 1e-4) -> np.ndarray:
     penalty = np.eye(x.shape[1])
     penalty[0, 0] = 0.0
@@ -285,10 +326,26 @@ def _ou_parameter_forecast(
     *,
     logarithmic: bool,
 ) -> tuple[float, dict[str, float]]:
+    values = np.asarray(values, dtype=float)
+    features = np.asarray(features, dtype=float)
+    # A missing price pre-sample is represented by the feature builder's 1e-8
+    # floor. It must never enter the multiplicative-residual fit: dividing by
+    # that sentinel creates an enormous OU state that contaminates all later
+    # expanding windows. FULL_DAILY normally supplies the pre-sample; this guard
+    # keeps new listings and partial upstream histories numerically honest.
+    usable = (
+        np.isfinite(values)
+        & np.isfinite(features).all(axis=1)
+        & (features[:, 2] > 1e-7)
+    )
+    values = values[usable]
+    features = features[usable]
+    if len(values) < 3 or not np.isfinite(next_feature).all() or next_feature[2] <= 1e-7:
+        raise ValueError("Insufficient warmed-up return history for the path forecast.")
     target = np.log(np.maximum(values, 1e-8)) if logarithmic else values
     coefficients = _ridge_coefficients(features, target)
     fitted = features @ coefficients
-    sigma = np.maximum(features[:, 2], 1e-8)
+    sigma = features[:, 2]
     residuals = (target - fitted) / sigma
     centered = residuals - float(np.mean(residuals))
     denominator = float(np.dot(centered[:-1], centered[:-1]))
@@ -300,7 +357,11 @@ def _ou_parameter_forecast(
     phi = float(np.clip(phi, 0.0, 0.995))
     expected_residual = float(np.mean(residuals) + phi * (residuals[-1] - np.mean(residuals)))
     conditional = float(next_feature @ coefficients + expected_residual * next_feature[2])
-    predicted = math.exp(conditional) if logarithmic else abs(conditional)
+    predicted = (
+        math.exp(float(np.clip(conditional, math.log(0.02), math.log(2.5))))
+        if logarithmic
+        else abs(conditional)
+    )
     return predicted, {
         "trend": float(next_feature[1]),
         "activity": float(next_feature[2]),
@@ -643,9 +704,9 @@ def compare_path_forecast_to_market(
             "A flagged gap is statistically unusual relative to walk-forward error, not a risk-free arbitrage."
         ),
         "adaptation_note": (
-            "The paper uses 1-24 month SPX/SX5E surfaces and decade-scale histories. Here its four-parameter SSVI "
-            "and reported path kernels are retained, but coefficients are re-estimated per NSE stock on a 14-90 "
-            "day grid; 1,000-day closes support the activity feature."
+            "The paper uses 1-24 month SPX/SX5E surfaces. Here its four-parameter SSVI and reported path kernels "
+            "are retained, but coefficients are re-estimated per NSE stock on a 14-90 day grid using the longest "
+            "successfully reconstructed official option history; 1,000-day closes support the activity feature."
         ),
         "source": "NSE India daily F&O bhavcopies, current option chain and yfinance closes",
         "source_url": chain.get("source_url") or f"https://www.nseindia.com/option-chain?symbol={symbol}",
@@ -687,7 +748,7 @@ async def get_path_dependent_iv_surface_forecast(
         (history_dates, history_surfaces), lot_size, price_history = await asyncio.gather(
             load_historical_surfaces(symbol),
             get_fno_lot_size(symbol, chain.get("selected_expiry")),
-            get_price_history(ticker, f"{symbol}.NS", "5Y"),
+            get_price_history(ticker, f"{symbol}.NS", "FULL_DAILY"),
         )
         result = await asyncio.to_thread(
             compare_path_forecast_to_market,
@@ -751,19 +812,58 @@ def historical_path_dependent_backtest(
         surfaces = np.asarray(history.get("surfaces") or [], dtype=float)
         if len(dates) != len(surfaces) or surfaces.ndim != 3 or len(surfaces) <= MINIMUM_BACKTEST_SURFACES:
             continue
-        if any(not 0 < (right - left).days <= 4 for left, right in zip(dates, dates[1:], strict=False)):
-            excluded_for_gaps += max(0, len(dates) - MINIMUM_BACKTEST_SURFACES)
-            continue
         evaluation_surfaces = np.asarray([_smooth_surface(surface) for surface in surfaces])
         calibrations = [calibrate_parsimonious_ssvi(surface) for surface in evaluation_surfaces]
         parameters = np.asarray([item["parameters"] for item in calibrations], dtype=float)
-        for target_index in range(MINIMUM_BACKTEST_SURFACES, len(surfaces)):
-            state = forecast_parameters(
-                parameters[:target_index],
-                [item.isoformat() for item in dates[:target_index]],
+        feature_matrices = {
+            name: _path_feature_matrix(
                 price_history,
+                dates,
+                name,
+                next_session=False,
             )
-            forecast = ssvi_surface_from_parameters(state["parameters"])
+            for name in ("a", "p")
+        }
+        next_feature_matrices = {
+            name: _path_feature_matrix(
+                price_history,
+                dates,
+                name,
+                next_session=True,
+            )
+            for name in ("a", "p")
+        }
+        for target_index in range(MINIMUM_BACKTEST_SURFACES, len(surfaces)):
+            recent_dates = dates[max(0, target_index - 2) : target_index + 1]
+            if any(
+                not 0 < (right - left).days <= 4
+                for left, right in zip(recent_dates, recent_dates[1:], strict=False)
+            ):
+                excluded_for_gaps += 1
+                continue
+            a, _ = _ou_parameter_forecast(
+                parameters[:target_index, 0],
+                feature_matrices["a"][:target_index],
+                next_feature_matrices["a"][target_index - 1],
+                logarithmic=False,
+            )
+            p, _ = _ou_parameter_forecast(
+                parameters[:target_index, 1],
+                feature_matrices["p"][:target_index],
+                next_feature_matrices["p"][target_index - 1],
+                logarithmic=True,
+            )
+            rho, _ = _jacobi_conditional_mean(
+                parameters[:target_index, 2], -0.995, 0.995
+            )
+            eta, _ = _jacobi_conditional_mean(
+                parameters[:target_index, 3], 0.01, math.sqrt(2.0) * 0.999
+            )
+            predicted_parameters = np.asarray(
+                [np.clip(a, 1e-5, 2.0), np.clip(p, 0.02, 2.5), rho, eta],
+                dtype=float,
+            )
+            forecast = ssvi_surface_from_parameters(predicted_parameters)
             actual = evaluation_surfaces[target_index]
             baseline = evaluation_surfaces[target_index - 1]
             model_rmse = float(np.sqrt(np.mean((actual - forecast) ** 2)))
@@ -793,7 +893,7 @@ def historical_path_dependent_backtest(
                     "directional_hits": int(np.sum(np.sign(predicted_move[meaningful]) == np.sign(actual_move[meaningful]))),
                     "directional_cells": int(np.sum(meaningful)),
                     "calibration_rmse": float(calibrations[target_index - 1]["calibration_rmse"]),
-                    "arbitrage_passed": bool(static_arbitrage_checks(state["parameters"])["passed"]),
+                    "arbitrage_passed": bool(static_arbitrage_checks(predicted_parameters)["passed"]),
                 }
             )
     if not observations:
@@ -887,7 +987,7 @@ def historical_path_dependent_backtest(
         "source": "Official NSE F&O bhavcopy closing IVs and yfinance daily underlying closes",
         "paper_url": PAPER_URL,
         "methodology": "Expanding-window, one-observed-session-ahead forecasts; every target surface and target-session return are excluded. Confidence intervals cluster-bootstrap complete target sessions.",
-        "limitation": "This tests surface IV error, not executable spread P&L. The NSE sample is much shorter and has fewer tenors than the paper's SPX/SX5E panel.",
+        "limitation": "This tests surface IV error, not executable spread P&L. NSE single-stock surfaces remain sparser and have fewer tenors than the paper's SPX/SX5E panel.",
         "strengths": [
             "Four parameters generate the whole surface quickly and transparently.",
             "The SSVI constraints preserve calendar monotonicity and the paper's sufficient butterfly-arbitrage bound.",
@@ -895,7 +995,7 @@ def historical_path_dependent_backtest(
         ],
         "weaknesses": [
             "The paper validates broad index options with 1-24 month tenors; NSE single-stock 14-90 day surfaces are a material domain shift.",
-            "A 50-session option history is too short to re-estimate all TSPL kernel hyperparameters, so paper-reported kernels are transferred.",
+            "TSPL kernel shapes are transferred from the paper until each stock has enough continuous history for causal, stock-specific kernel selection.",
             "The conditional-mean forecast does not replay bid-ask spreads, slippage, theta or realized spread P&L.",
             "The authors leave asset-management and trading-strategy impact for future research; mispricing labels here are model-relative, not arbitrage claims.",
         ],
@@ -910,23 +1010,43 @@ async def get_cached_path_dependent_backtest(
     from app.services.market_data.india_trading import get_price_history
 
     cache = FileCache(get_settings().cache_path, "iv_model_evaluation")
+    history_fingerprint = ",".join(
+        f"{symbol}:{len(history.get('dates') or [])}:"
+        f"{(history.get('dates') or [''])[0]}:{(history.get('dates') or [''])[-1]}"
+        for symbol, history in sorted(histories.items())
+    )
     key = cache_key(
         MODEL_VERSION,
         "historical-backtest",
-        ",".join(sorted(histories)),
+        history_fingerprint,
     )
+    latest_key = cache_key(MODEL_VERSION, "historical-backtest-latest")
     if not force_refresh:
         cached = cache.get(key, 6 * 60 * 60)
         if cached is not None:
             return cached
+        latest = cache.get(latest_key, None)
+        if latest is not None:
+            return latest
     semaphore = asyncio.Semaphore(6)
 
     async def load(symbol: str) -> tuple[str, dict[str, Any]]:
         async with semaphore:
-            return symbol, await get_price_history(symbol, f"{symbol}.NS", "5Y")
+            payload = await get_price_history(symbol, f"{symbol}.NS", "FULL_DAILY")
+            return symbol, {
+                **payload,
+                "candles": _adjusted_return_candles(payload),
+                "source": "Yahoo Finance daily closes with corporate-action jumps neutralized",
+            }
 
     loaded = await asyncio.gather(*(load(symbol) for symbol in histories))
     prices = dict(loaded)
     result = await asyncio.to_thread(historical_path_dependent_backtest, histories, prices)
-    cache.put(key, result, source=result.get("source", "NSE/yfinance"), model_name=MODEL_NAME)
+    for cache_entry in (key, latest_key):
+        cache.put(
+            cache_entry,
+            result,
+            source=result.get("source", "NSE/yfinance"),
+            model_name=MODEL_NAME,
+        )
     return result
