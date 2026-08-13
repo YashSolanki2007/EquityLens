@@ -83,6 +83,7 @@ function signalLabel(signal: IntradayCopulaCandidate["signal"]) {
 
 function exitLabel(reason: string | null | undefined) {
   if (reason === "profit_target_0_5") return "+0.5% take-profit";
+  if (reason === "stop_loss_0_1") return "−0.1% stop-loss";
   if (reason === "copula_equilibrium") return "Copula 40%–60% equilibrium";
   if (reason === "mandatory_intraday_square_off") return "15:10 mandatory square-off";
   if (reason === "manual") return "Manual close";
@@ -236,6 +237,7 @@ function TradeChart({ trade }: { trade: IntradayCopulaTrade }) {
           />
           <ReferenceLine y={0} stroke="var(--muted-foreground)" />
           <ReferenceLine y={trade.profit_target_percent} stroke="var(--chart-2)" strokeDasharray="4 4" />
+          <ReferenceLine y={-trade.stop_loss_percent} stroke="var(--destructive)" strokeDasharray="4 4" />
           <Line dataKey="returnPercent" name="Pair return" stroke="var(--chart-1)" strokeWidth={2.5} dot={false} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
@@ -274,7 +276,7 @@ function TradeCard({ trade, closing, onClose }: { trade: IntradayCopulaTrade; cl
           <div className="space-y-1">
             <p>Entry {atIst(trade.entry_price_timestamp)} · {trade.entry_price_source}</p>
             <p className="font-mono">Entry h values {probability(trade.entry_h_a_given_b)} / {probability(trade.entry_h_b_given_a)} · KSS t {trade.entry_kss_statistic.toFixed(3)}</p>
-            <p>Automatic exits: copula equilibrium, +{trade.profit_target_percent.toFixed(1)}%, or mandatory 15:10 IST square-off.</p>
+            <p>Automatic exits: −{trade.stop_loss_percent.toFixed(1)}% stop-loss, +{trade.profit_target_percent.toFixed(1)}% take-profit, copula equilibrium, or mandatory 15:10 IST square-off.</p>
             {trade.status === "closed" ? <p className="font-medium text-foreground">Closed {trade.closed_at ? atIst(trade.closed_at) : "—"} · {exitLabel(trade.exit_reason)}</p> : null}
           </div>
           {trade.status === "open" ? <Button size="sm" variant="outline" onClick={onClose} disabled={closing}>{closing ? <Loader2 className="animate-spin" /> : null}Close paper trade</Button> : null}
@@ -286,6 +288,7 @@ function TradeCard({ trade, closing, onClose }: { trade: IntradayCopulaTrade; cl
 
 export function IntradayCopulaTrackerView() {
   const [portfolioId, setPortfolioId] = useState<string>();
+  const [candidateLimit, setCandidateLimit] = useState(12);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -298,11 +301,11 @@ export function IntradayCopulaTrackerView() {
   }, []);
 
   const tracker = useQuery({
-    queryKey: ["intraday-copula-tracker", portfolioId],
-    queryFn: () => api.syncIntradayCopulaTracker(portfolioId!),
+    queryKey: ["intraday-copula-tracker", portfolioId, candidateLimit],
+    queryFn: () => api.syncIntradayCopulaTracker(portfolioId!, candidateLimit),
     enabled: Boolean(portfolioId),
     staleTime: 60_000,
-    refetchInterval: 5 * 60_000,
+    refetchInterval: (query) => query.state.data?.refreshing ? 10_000 : 5 * 60_000,
     refetchOnWindowFocus: true,
   });
   const close = useMutation({
@@ -334,6 +337,7 @@ export function IntradayCopulaTrackerView() {
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">Strict daily pairs are re-hedged with 504 completed sessions, then evaluated on completed five-minute cash-equity bars. Copula tails create entries; signals seen after the cutoff or while NSE is closed queue for the next actual session’s opening price.</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {data ? <Badge variant={data.refreshing ? "secondary" : "outline"}>{data.refreshing ? <><Loader2 className="animate-spin" /> Updating shared snapshot</> : <>Cached through {data.snapshot_bar_end ? atIst(data.snapshot_bar_end) : atIst(data.generated_at)}</>}</Badge> : null}
             <Button size="sm" variant="outline" asChild><Link href="/copula-pair-signals"><Activity /> Daily copula signals</Link></Button>
             <Button size="sm" variant="outline" disabled={!portfolioId || tracker.isFetching} onClick={() => tracker.refetch()}>{tracker.isFetching ? <Loader2 className="animate-spin" /> : <RefreshCw />}Check latest five-minute bar</Button>
           </div>
@@ -363,7 +367,7 @@ export function IntradayCopulaTrackerView() {
       ) : (
         <Tabs defaultValue="signals" className="space-y-4">
           <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto rounded-lg border border-border bg-card p-1 sm:w-auto">
-            <TabsTrigger value="signals" className="gap-2 px-4 py-2">Current signals <Badge variant="secondary">{data.candidates.length}</Badge></TabsTrigger>
+            <TabsTrigger value="signals" className="gap-2 px-4 py-2">Current signals <Badge variant="secondary">{data.eligible_pairs}</Badge></TabsTrigger>
             <TabsTrigger value="queued" className="gap-2 px-4 py-2">Queued for next open <Badge variant="secondary">{queuedEntries.length}</Badge></TabsTrigger>
             <TabsTrigger value="open" className="gap-2 px-4 py-2">Open trades <Badge variant="secondary">{openTrades.length}</Badge></TabsTrigger>
             <TabsTrigger value="closed" className="gap-2 px-4 py-2">Closed trades <Badge variant="secondary">{closedTrades.length}</Badge></TabsTrigger>
@@ -371,7 +375,7 @@ export function IntradayCopulaTrackerView() {
 
           <TabsContent value="signals" className="space-y-4">
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card p-3 text-xs text-muted-foreground"><Clock3 className="size-4" /> Entry {data.entry_start_ist}–{data.last_entry_ist} IST · force close {data.forced_exit_ist} IST · refreshes every {data.bar_minutes} minutes</div>
-            {data.candidates.length ? data.candidates.map((candidate) => <CandidateCard key={candidate.pair_id} candidate={candidate} />) : <Card><CardContent className="py-8"><p className="font-semibold">No pair has sufficient five-minute formation data.</p><p className="mt-1 text-sm text-muted-foreground">The strict daily gate may also currently have no dual-test, q ≤ 0.05 candidates.</p></CardContent></Card>}
+            {data.refreshing && !data.candidates.length ? <Card><CardContent className="py-8"><p className="flex items-center gap-2 font-semibold"><Loader2 className="animate-spin" /> Building the first shared five-minute snapshot.</p><p className="mt-1 text-sm text-muted-foreground">The page is available immediately; the background recorder is downloading and fitting the matrix once for every tracker user.</p></CardContent></Card> : data.candidates.length ? <>{data.candidates.map((candidate) => <CandidateCard key={candidate.pair_id} candidate={candidate} />)}{data.returned_candidates < data.eligible_pairs ? <div className="flex items-center justify-center gap-3 rounded-lg border border-border bg-card p-4"><p className="text-xs text-muted-foreground">Showing {data.returned_candidates} of {data.eligible_pairs} ranked candidates.</p><Button size="sm" variant="outline" onClick={() => setCandidateLimit((current) => Math.min(current + 12, 160))}>Load 12 more</Button></div> : null}</> : <Card><CardContent className="py-8"><p className="font-semibold">No pair has sufficient five-minute formation data.</p><p className="mt-1 text-sm text-muted-foreground">The strict daily gate may also currently have no dual-test, q ≤ 0.05 candidates.</p></CardContent></Card>}
           </TabsContent>
 
           <TabsContent value="queued" className="space-y-4">

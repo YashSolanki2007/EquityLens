@@ -97,7 +97,11 @@ async def sync_intraday_copula_tracker(
     _require_development()
     from app.services.intraday_copula_tracker import sync_intraday_copula_tracker
 
-    return await sync_intraday_copula_tracker(db, body.portfolio_id)
+    return await sync_intraday_copula_tracker(
+        db,
+        body.portfolio_id,
+        candidate_limit=body.candidate_limit,
+    )
 
 
 @router.post(

@@ -7,6 +7,7 @@ from app.schemas.company import (
     FinancialOverviewOut,
     FinancialSeriesPoint,
 )
+from app.schemas.search import Citation
 from app.services import company_chat
 from app.services.company_chat import (
     CompanyChatPlan,
@@ -16,6 +17,7 @@ from app.services.company_chat import (
     _normalize_plan,
     answer_company_question,
 )
+from app.services.research.deep_research import DeepResearchResult
 
 
 def test_decision_question_requires_the_complete_evidence_stack():
@@ -53,6 +55,21 @@ def test_decision_support_only_uses_news_when_explicitly_requested():
 
     assert not plain.needs_news
     assert current.needs_news
+
+
+def test_recent_price_decline_question_always_routes_to_deep_research():
+    question = "In the past five days, what caused the decline in the stock price?"
+
+    heuristic = _heuristic_plan(question)
+    normalized = _normalize_plan(
+        CompanyChatPlan(intent="company_facts", needs_cards=True),
+        question,
+    )
+
+    assert heuristic.intent == "deep_research"
+    assert heuristic.needs_news
+    assert normalized.intent == "deep_research"
+    assert normalized.needs_news
 
 
 def test_derived_ratios_calculate_cagr_and_price_position():
@@ -188,7 +205,11 @@ async def test_ratio_chat_uses_normalized_financials_and_reported_ratios(monkeyp
     monkeypatch.setattr(company_chat, "_plan", fake_plan)
     monkeypatch.setattr(company_chat, "_overview", fake_overview)
     monkeypatch.setattr(company_chat, "get_trading_ratios", fake_ratios)
-    monkeypatch.setattr(company_chat, "get_provider", lambda: FakeProvider())
+    monkeypatch.setattr(
+        company_chat,
+        "get_company_chat_provider",
+        lambda **_kwargs: FakeProvider(),
+    )
 
     result = await answer_company_question(
         object(),
@@ -201,3 +222,56 @@ async def test_ratio_chat_uses_normalized_financials_and_reported_ratios(monkeyp
     assert "Yahoo valuation and trading ratios" in result.data_used
     assert len(result.citations) == 1
     assert result.citations[0]["url"] == "https://example.test/quote"
+
+
+@pytest.mark.asyncio
+async def test_company_catalyst_question_uses_full_deep_research(monkeypatch):
+    company = SimpleNamespace(
+        id="company-id",
+        ticker="TEST",
+        name="Test Limited",
+        country="IN",
+    )
+
+    async def fake_plan(company, question):
+        return CompanyChatPlan(intent="deep_research", needs_cards=True, needs_news=True)
+
+    async def fake_research(db, company, question, **kwargs):
+        assert kwargs["conversation_context"] == "No earlier turns."
+        return DeepResearchResult(
+            answer="The catalyst has a bounded, evidence-backed effect [1].",
+            citations=[
+                Citation(
+                    source_type="news",
+                    url="https://example.test/catalyst",
+                    description="Catalyst report",
+                )
+            ],
+            limitations=["One quarter of direct evidence is available."],
+        )
+
+    class FakeProvider:
+        model_name = "nvidia/nemotron-3-ultra-550b-a55b"
+
+    monkeypatch.setattr(company_chat, "_plan", fake_plan)
+    monkeypatch.setattr(
+        company_chat,
+        "research_company_page_deeply",
+        fake_research,
+    )
+    monkeypatch.setattr(
+        company_chat,
+        "get_company_chat_provider",
+        lambda **_kwargs: FakeProvider(),
+    )
+
+    result = await answer_company_question(
+        object(),
+        company,
+        CompanyChatRequest(message="Research the recent catalyst deeply."),
+    )
+
+    assert result.intent == "deep_research"
+    assert result.model_name == "nvidia/nemotron-3-ultra-550b-a55b"
+    assert result.citations[0]["url"] == "https://example.test/catalyst"
+    assert "multi-angle company catalyst research" in result.data_used

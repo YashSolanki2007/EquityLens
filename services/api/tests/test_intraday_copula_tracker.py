@@ -7,17 +7,22 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from app.core.cache import FileCache
 from app.models import PaperIntradayCopulaPendingEntry, PaperIntradayCopulaTrade
 from app.services.intraday_copula_tracker import (
     DAILY_REGRESSION_DAYS,
     PROFIT_TARGET_PERCENT,
+    IntradayCandidateSnapshot,
     _entry_block_reason,
+    _load_candidate_snapshot,
     _new_trade_from_pending,
     _should_queue_for_next_open,
+    _store_candidate_snapshot,
     automatic_intraday_exit_reason,
     build_intraday_candidate,
     calculate_intraday_mark,
     completed_five_minute_bars,
+    intraday_snapshot_slot,
 )
 
 INDIA_TZ = ZoneInfo("Asia/Kolkata")
@@ -69,6 +74,48 @@ def test_completed_bars_exclude_the_forming_five_minute_interval():
 
     assert len(result) == 1
     assert result.index[0].astimezone(INDIA_TZ).time() == time(9, 20)
+
+
+def test_snapshot_slot_advances_only_on_completed_market_bars():
+    assert intraday_snapshot_slot(
+        datetime(2026, 8, 12, 10, 23, tzinfo=INDIA_TZ)
+    ).endswith("10:20:00+05:30")
+    assert intraday_snapshot_slot(
+        datetime(2026, 8, 12, 18, 0, tzinfo=INDIA_TZ)
+    ).endswith("15:30:00+05:30")
+    assert intraday_snapshot_slot(
+        datetime(2026, 8, 15, 12, 0, tzinfo=INDIA_TZ)
+    ).startswith("2026-08-14T15:30:00")
+
+
+def test_candidate_snapshot_is_persisted_and_latest_can_be_stale(monkeypatch, tmp_path):
+    cache = FileCache(tmp_path, "intraday-test")
+    monkeypatch.setattr(
+        "app.services.intraday_copula_tracker._snapshot_cache",
+        lambda: cache,
+    )
+    slot = "2026-08-12T10:20:00+05:30"
+    generated_at = datetime(2026, 8, 12, 4, 51, tzinfo=UTC)
+    _store_candidate_snapshot(
+        IntradayCandidateSnapshot(
+            slot=slot,
+            generated_at=generated_at,
+            snapshot_bar_end=datetime(2026, 8, 12, 10, 20, tzinfo=INDIA_TZ),
+            candidates=[],
+            cached=False,
+            current=True,
+        )
+    )
+
+    exact = _load_candidate_snapshot(slot=slot)
+    stale = _load_candidate_snapshot(
+        slot="2026-08-12T10:25:00+05:30",
+        latest=True,
+    )
+
+    assert exact is not None and exact.cached and exact.current
+    assert exact.generated_at == generated_at
+    assert stale is not None and stale.cached and not stale.current
 
 
 def test_entry_gate_uses_completed_bar_and_intraday_cutoffs():
@@ -134,13 +181,38 @@ def test_mark_and_half_percent_profit_exit_use_gross_entry_notional():
     )
 
 
-def test_copula_equilibrium_and_forced_square_off_are_exit_rules():
+def test_tenth_percent_stop_loss_is_an_automatic_exit():
     trade = _trade()
 
     assert (
         automatic_intraday_exit_reason(
             trade,
             return_percent=-0.1,
+            h_a_given_b=0.45,
+            h_b_given_a=0.55,
+            quote_timestamp=datetime(2026, 8, 11, 5, 0, tzinfo=UTC),
+        )
+        == "stop_loss_0_1"
+    )
+    assert (
+        automatic_intraday_exit_reason(
+            trade,
+            return_percent=-0.099999,
+            h_a_given_b=0.8,
+            h_b_given_a=0.2,
+            quote_timestamp=datetime(2026, 8, 11, 5, 0, tzinfo=UTC),
+        )
+        is None
+    )
+
+
+def test_copula_equilibrium_and_forced_square_off_are_exit_rules():
+    trade = _trade()
+
+    assert (
+        automatic_intraday_exit_reason(
+            trade,
+            return_percent=-0.05,
             h_a_given_b=0.45,
             h_b_given_a=0.55,
             quote_timestamp=datetime(2026, 8, 11, 6, 0, tzinfo=UTC),
@@ -150,7 +222,7 @@ def test_copula_equilibrium_and_forced_square_off_are_exit_rules():
     assert (
         automatic_intraday_exit_reason(
             trade,
-            return_percent=-0.1,
+            return_percent=-0.05,
             h_a_given_b=0.8,
             h_b_given_a=0.2,
             quote_timestamp=datetime(2026, 8, 11, 15, 10, tzinfo=INDIA_TZ),

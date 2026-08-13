@@ -27,6 +27,9 @@ from app.services.market_data.iv_surface import (
     fit_fpca_var,
     load_historical_surfaces,
 )
+from app.services.market_data.path_dependent_ssvi import (
+    get_cached_path_dependent_backtest,
+)
 from app.services.technical_scanner import get_fno_underlyings
 
 logger = logging.getLogger(__name__)
@@ -358,14 +361,28 @@ def historical_walk_forward_backtest(
     }
 
 
-def cached_historical_backtest() -> dict[str, Any]:
+def cached_surface_histories() -> dict[str, dict[str, Any]]:
     cache = FileCache(get_settings().cache_path, "iv_surfaces")
     histories = {}
     for symbol in DEFAULT_SYMBOLS:
         history = cache.get(cache_key(SURFACE_DATA_VERSION, symbol), None)
         if history is not None:
             histories[symbol] = history
-    return historical_walk_forward_backtest(histories)
+    return histories
+
+
+def cached_historical_backtest() -> dict[str, Any]:
+    return historical_walk_forward_backtest(cached_surface_histories())
+
+
+async def path_dependent_historical_backtest(
+    *,
+    force_refresh: bool = False,
+) -> dict[str, Any]:
+    return await get_cached_path_dependent_backtest(
+        cached_surface_histories(),
+        force_refresh=force_refresh,
+    )
 
 
 async def _build_candidate(symbol: str, now: datetime) -> tuple[dict[str, Any] | None, str | None]:
@@ -562,7 +579,10 @@ async def evaluation_report() -> dict[str, Any]:
         and item.baseline_rmse is not None
         and item.model_rmse < item.baseline_rmse
     )
-    historical_backtest = await asyncio.to_thread(cached_historical_backtest)
+    historical_backtest, path_dependent_backtest = await asyncio.gather(
+        asyncio.to_thread(cached_historical_backtest),
+        path_dependent_historical_backtest(),
+    )
 
     if len(scored) < EVIDENCE_TARGET:
         verdict = "Collecting evidence"
@@ -616,6 +636,7 @@ async def evaluation_report() -> dict[str, Any]:
         "verdict": verdict,
         "verdict_detail": verdict_detail,
         "historical_backtest": historical_backtest,
+        "path_dependent_backtest": path_dependent_backtest,
         "thresholds": {
             "fpca_explained_variance_healthy_percent": (
                 EXPLAINED_VARIANCE_TARGET_PERCENT

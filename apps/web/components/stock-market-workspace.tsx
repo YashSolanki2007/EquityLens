@@ -1687,6 +1687,8 @@ function IVSurfaceForecastCard({
     );
   }
 
+  const isPathDependent = forecast.model_family === "path_dependent_ssvi";
+
   const chartData = forecast.comparisons.map((item) => ({
     bucket: item.label,
     market: item.market_iv_percent,
@@ -1713,12 +1715,14 @@ function IVSurfaceForecastCard({
           <div>
             <CardTitle className="flex items-center gap-2 text-base">
               <BrainCircuit className="size-4 text-emerald-700 dark:text-emerald-400" />
-              Predicted IV versus the option market
+              {isPathDependent
+                ? "Path-dependent SSVI versus the option market"
+                : "FPCA–VAR versus the option market"}
             </CardTitle>
             <CardDescription className="mt-1">
               {forecast.is_carried_forward
                 ? `Published ${formatDateTime(forecast.generated_at)} and retained for follow-through to ${forecast.selected_expiry}.`
-                : `A next-session FPCA forecast compared with the latest market IV for ${forecast.selected_expiry}.`}
+                : `A next-session ${isPathDependent ? "path-dependent SSVI" : "FPCA–VAR"} forecast compared with the latest market IV for ${forecast.selected_expiry}.`}
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -1877,6 +1881,9 @@ function IVSurfaceForecastCard({
                     <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
                       Forecast error {item.model_error_vol_points.toFixed(2)} pts · required gap{" "}
                       {item.material_threshold_vol_points.toFixed(2)} pts
+                      {item.standardized_gap != null
+                        ? ` · z ${item.standardized_gap >= 0 ? "+" : ""}${item.standardized_gap.toFixed(2)}`
+                        : ""}
                     </p>
                     <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
                       {item.explanation}
@@ -1917,18 +1924,34 @@ function IVSurfaceForecastCard({
             {forecast.fit_end}
           </div>
           <div className="rounded-md bg-muted/30 px-3 py-2">
-            <span className="font-medium text-foreground">FPCA coverage</span>
-            <br />
-            {forecast.principal_components} components explain{" "}
-            {formatPercent(forecast.explained_variance_percent)}
-            <span className="mt-1 block text-[10px] leading-4">
-              {forecast.component_selection_note}
+            <span className="font-medium text-foreground">
+              {isPathDependent ? "Four-parameter SSVI" : "FPCA coverage"}
             </span>
+            <br />
+            {isPathDependent && forecast.ssvi_parameters ? (
+              <>
+                a {forecast.ssvi_parameters.a.toFixed(4)} · p {forecast.ssvi_parameters.p.toFixed(3)} · ρ {forecast.ssvi_parameters.rho.toFixed(3)} · η {forecast.ssvi_parameters.eta.toFixed(3)}
+                <span className="mt-1 block text-[10px] leading-4">
+                  {forecast.static_arbitrage_checks?.passed
+                    ? "Static-arbitrage checks passed. "
+                    : "Static-arbitrage checks require review. "}
+                  {forecast.component_selection_note}
+                </span>
+              </>
+            ) : (
+              <>
+                {forecast.principal_components} components explain{" "}
+                {formatPercent(forecast.explained_variance_percent)}
+                <span className="mt-1 block text-[10px] leading-4">
+                  {forecast.component_selection_note}
+                </span>
+              </>
+            )}
           </div>
           <div className="rounded-md bg-muted/30 px-3 py-2">
             <span className="font-medium text-foreground">Signal rule</span>
             <br />
-            A gap must exceed 2 vol points and 1.5× the error from{" "}
+            A gap must exceed 2 vol points and {isPathDependent ? "1.96×" : "1.5×"} the error from{" "}
             {forecast.validation_sessions} expanding one-session tests.
           </div>
         </div>
@@ -1946,7 +1969,7 @@ function IVSurfaceForecastCard({
               rel="noreferrer"
               className="inline-flex items-center gap-1 font-medium text-emerald-700 hover:underline dark:text-emerald-400"
             >
-              Read the FPCA paper <ExternalLink className="size-3" />
+              Read the {isPathDependent ? "path-dependent SSVI" : "FPCA"} paper <ExternalLink className="size-3" />
             </a>
             <a
               href={forecast.source_url}
@@ -2488,6 +2511,16 @@ export function IVPredictionWorkspace({ ticker }: { ticker: string }) {
     staleTime: 5 * 60 * 1000,
     enabled: Boolean(options.data?.available && selectedPrimaryExpiry),
   });
+  const pathDependentForecast = useQuery({
+    queryKey: ["company-path-dependent-iv-surface-forecast", ticker, selectedPrimaryExpiry],
+    queryFn: () =>
+      api.getCompanyPathDependentIVSurfaceForecast(
+        ticker,
+        selectedPrimaryExpiry || undefined
+      ),
+    staleTime: 5 * 60 * 1000,
+    enabled: Boolean(options.data?.available && selectedPrimaryExpiry),
+  });
   const paperTrades = useQuery({
     queryKey: ["company-paper-iv-trades", ticker, portfolioId],
     queryFn: () => api.listCompanyPaperIVTrades(ticker, portfolioId!),
@@ -2499,15 +2532,19 @@ export function IVPredictionWorkspace({ ticker }: { ticker: string }) {
     mutationFn: ({
       tradeExpiry,
       strategyId,
+      modelFamily,
     }: {
       tradeExpiry: string;
       strategyId: string;
+      modelFamily: "fpca_var" | "path_dependent_ssvi";
     }) =>
       api.createCompanyPaperIVTrade(
         ticker,
         portfolioId!,
         tradeExpiry,
-        strategyId
+        strategyId,
+        1,
+        modelFamily
       ),
     onSuccess: () =>
       queryClient.invalidateQueries({
@@ -2548,8 +2585,8 @@ export function IVPredictionWorkspace({ ticker }: { ticker: string }) {
             IV prediction and strategy scenarios
           </h2>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">
-            Compare the option market&apos;s current IV with the next-session FPCA
-            forecast. Material ATM and OTM differences are translated into ranked,
+            Compare the option market&apos;s current IV with both the existing FPCA–VAR
+            forecast and the paper&apos;s path-dependent SSVI challenger. Material ATM and OTM differences are translated into ranked,
             defined-risk structures with one-lot expiry P&amp;L scenarios. Once
             published, a forecast is retained through the selected expiry even if a
             later model refresh cannot be completed.
@@ -2591,6 +2628,7 @@ export function IVPredictionWorkspace({ ticker }: { ticker: string }) {
               createPaperTrade.mutate({
                 tradeExpiry: candidate.expiry,
                 strategyId: candidate.strategy_id,
+                modelFamily: "fpca_var",
               });
             }
           }}
@@ -2602,6 +2640,32 @@ export function IVPredictionWorkspace({ ticker }: { ticker: string }) {
           isTracked={isStrategyTracked}
         />
       )}
+
+      {options.data?.available ? (
+        <IVSurfaceForecastCard
+          forecast={pathDependentForecast.data}
+          isLoading={
+            pathDependentForecast.isLoading &&
+            pathDependentForecast.fetchStatus !== "idle"
+          }
+          isError={pathDependentForecast.isError}
+          onTrack={(candidate) => {
+            if (candidate.expiry && candidate.strategy_id && portfolioId) {
+              createPaperTrade.mutate({
+                tradeExpiry: candidate.expiry,
+                strategyId: candidate.strategy_id,
+                modelFamily: "path_dependent_ssvi",
+              });
+            }
+          }}
+          trackingStrategyId={
+            createPaperTrade.isPending
+              ? createPaperTrade.variables?.strategyId
+              : undefined
+          }
+          isTracked={isStrategyTracked}
+        />
+      ) : null}
 
       {trackingError && (
         <div className="rounded-md border border-amber-500/30 bg-amber-50/60 px-4 py-3 text-xs leading-5 text-amber-950 dark:bg-amber-950/20 dark:text-amber-100">
@@ -2624,7 +2688,7 @@ export function IVPredictionWorkspace({ ticker }: { ticker: string }) {
       <div className="flex flex-col gap-2 rounded-md border border-border/70 bg-muted/25 px-4 py-3 text-[11px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <span className="inline-flex items-center gap-1.5">
           <Activity className="size-3.5" />
-          The FPCA forecast is a statistical next-session scenario; payoff charts
+          Both surface forecasts are statistical next-session scenarios; payoff charts
           show expiry outcomes using the displayed publication premiums. Saved paper
           positions are followed using current close-out quotes through expiry. NSE
           stock options are physically settled.

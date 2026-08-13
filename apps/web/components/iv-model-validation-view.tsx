@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Activity, AlertTriangle, CheckCircle2, FlaskConical, RefreshCw } from "lucide-react";
+import { Activity, AlertTriangle, CheckCircle2, ExternalLink, FlaskConical, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,7 @@ export function IVModelValidationView() {
   const fpcaHealthy = (data.average_explained_variance_percent ?? 0) >= data.thresholds.fpca_explained_variance_healthy_percent;
   const varBeatsBaseline = (data.improvement_over_baseline_percent ?? -Infinity) > 0;
   const historical = data.historical_backtest;
+  const path = data.path_dependent_backtest;
   const collection = run.data?.collection;
 
   return (
@@ -64,14 +65,14 @@ export function IVModelValidationView() {
               <p className="page-eyebrow">System · model governance</p>
               <Badge variant="outline"><FlaskConical className="mr-1 size-3" /> Forward test</Badge>
             </div>
-            <h1 className="mt-2 text-2xl font-semibold tracking-[-0.035em]">FPCA–VAR validation lab</h1>
+            <h1 className="mt-2 text-2xl font-semibold tracking-[-0.035em]">IV surface validation lab</h1>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-muted-foreground">
-              Each forecast is frozen before its NSE target session opens, then compared with the official next-session IV surface and a no-change forecast. These results diagnose whether surface compression or score forecasting needs to change.
+              Compare the existing FPCA–VAR model with the path-dependent SSVI challenger. Every out-of-sample target is excluded from fitting and judged against the same no-change surface.
             </p>
           </div>
           <Button onClick={() => run.mutate()} disabled={run.isPending}>
             <RefreshCw className={run.isPending ? "size-4 animate-spin" : "size-4"} />
-            {run.isPending ? "Collecting eligible surfaces…" : "Run collection and scoring"}
+            {run.isPending ? "Running causal backtests…" : "Run collection and both backtests"}
           </Button>
         </div>
         <div className="grid gap-px bg-border/70 sm:grid-cols-2 lg:grid-cols-4">
@@ -185,6 +186,82 @@ export function IVModelValidationView() {
               </div>
               <p className="text-[10px] leading-4 text-muted-foreground">
                 {historical.methodology} Data: {historical.source}. {historical.excluded_for_gaps} candidate forecasts were excluded because their history contained gaps longer than four calendar days. {historical.limitation}
+              </p>
+            </>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card className="overflow-hidden border-emerald-700/25">
+        <CardHeader className="border-b border-border/70 bg-emerald-950/[0.025]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Path-dependent SSVI challenger · out-of-sample</CardTitle>
+              <p className="mt-1 max-w-4xl text-xs leading-5 text-muted-foreground">
+                Four-parameter arbitrage-constrained SSVI with weighted return and squared-return path features, OU residual means for ATM term structure, and bounded Jacobi means for smile shape.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline">{path.verdict}</Badge>
+              {path.significance_result ? <Badge variant="outline">{path.significance_result}</Badge> : null}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-5">
+          <div className="flex gap-2 text-sm">
+            {path.statistically_significant ? (
+              <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+            ) : (
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
+            )}
+            <p className="leading-6 text-muted-foreground">{path.verdict_detail}</p>
+          </div>
+          {path.available ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Out-of-sample forecasts</p><p className="mt-2 font-mono text-xl font-semibold">{path.observations}</p><p className="mt-1 text-[10px] text-muted-foreground">{path.symbols} stocks · {path.target_sessions} sessions</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Path SSVI RMSE</p><p className="mt-2 font-mono text-xl font-semibold">{metric(path.model_rmse)}</p><p className="mt-1 text-[10px] text-muted-foreground">vs same-sample FPCA {metric(path.improvement_over_fpca_percent, "%")}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Same-sample FPCA RMSE</p><p className="mt-2 font-mono text-xl font-semibold">{metric(path.fpca_rmse_same_sample)}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">No-change RMSE</p><p className="mt-2 font-mono text-xl font-semibold">{metric(path.baseline_rmse)}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">RMSE improvement</p><p className="mt-2 font-mono text-xl font-semibold">{metric(path.improvement_over_baseline_percent, "%")}</p><p className="mt-1 text-[10px] text-muted-foreground">95% CI {metric(path.improvement_confidence_interval_95?.[0], "%")} to {metric(path.improvement_confidence_interval_95?.[1], "%")}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Two-sided p-value</p><p className="mt-2 font-mono text-xl font-semibold">{metric(path.bootstrap_p_value_two_sided, "", 3)}</p><p className="mt-1 text-[10px] text-muted-foreground">date-clustered bootstrap</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Direction accuracy</p><p className="mt-2 font-mono text-xl font-semibold">{metric(path.directional_accuracy_percent, "%")}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">SSVI calibration RMSE</p><p className="mt-2 font-mono text-xl font-semibold">{metric(path.average_calibration_rmse, " pts")}</p></div>
+                <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Static-arbitrage pass</p><p className="mt-2 font-mono text-xl font-semibold">{metric(path.static_arbitrage_pass_rate_percent, "%")}</p></div>
+              </div>
+              <div className="max-h-[360px] overflow-auto rounded-md border border-border/70">
+                <table className="w-full min-w-[760px] text-left text-[11px]">
+                  <thead className="sticky top-0 bg-muted/95 text-muted-foreground backdrop-blur">
+                    <tr>{["Stock", "Tests", "Path RMSE", "No-change RMSE", "Improvement", "Win rate", "Direction"].map((item) => <th key={item} className="px-3 py-2 font-medium">{item}</th>)}</tr>
+                  </thead>
+                  <tbody>
+                    {(path.per_symbol ?? []).map((item) => (
+                      <tr key={item.ticker} className="border-t border-border/60">
+                        <td className="px-3 py-2 font-mono font-semibold">{item.ticker}</td>
+                        <td className="px-3 py-2 font-mono">{item.observations}</td>
+                        <td className="px-3 py-2 font-mono">{metric(item.model_rmse)}</td>
+                        <td className="px-3 py-2 font-mono">{metric(item.baseline_rmse)}</td>
+                        <td className="px-3 py-2 font-mono">{metric(item.improvement_over_baseline_percent, "%")}</td>
+                        <td className="px-3 py-2 font-mono">{metric(item.model_win_rate_percent, "%")}</td>
+                        <td className="px-3 py-2 font-mono">{metric(item.directional_accuracy_percent, "%")}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="rounded-md border border-emerald-700/20 bg-emerald-950/[0.025] p-4">
+                  <p className="terminal-label">Strengths</p>
+                  <ul className="mt-2 space-y-2 text-xs leading-5 text-muted-foreground">{path.strengths.map((item) => <li key={item}>• {item}</li>)}</ul>
+                </div>
+                <div className="rounded-md border border-amber-600/20 bg-amber-950/[0.02] p-4">
+                  <p className="terminal-label">Weaknesses</p>
+                  <ul className="mt-2 space-y-2 text-xs leading-5 text-muted-foreground">{path.weaknesses.map((item) => <li key={item}>• {item}</li>)}</ul>
+                </div>
+              </div>
+              <p className="text-[10px] leading-4 text-muted-foreground">
+                {path.methodology} Data: {path.source}. {path.limitation}{" "}
+                <a href={path.paper_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-emerald-700 hover:underline dark:text-emerald-400">Read the paper <ExternalLink className="size-3" /></a>
               </p>
             </>
           ) : null}

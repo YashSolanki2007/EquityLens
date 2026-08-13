@@ -93,12 +93,9 @@ async def lifespan(app: FastAPI):
         iv_evaluation_task.cancel()
         await asyncio.gather(iv_evaluation_task, return_exceptions=True)
     await yahoo_stream.stop()
-    from app.core.llm import get_provider
+    from app.core.llm import close_providers
 
-    provider = get_provider()
-    aclose = getattr(provider, "aclose", None)
-    if aclose:
-        await aclose()
+    await close_providers()
 
 
 app = FastAPI(title="Equity Research Prototype", lifespan=lifespan)

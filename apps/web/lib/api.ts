@@ -609,6 +609,7 @@ export const IVSurfaceForecastSchema = z.object({
   forecast_for_date: z.string().nullish(),
   model: z.string(),
   model_version: z.string(),
+  model_family: z.enum(["fpca_var", "path_dependent_ssvi"]).default("fpca_var"),
   observations: z.number(),
   fit_start: z.string().nullish(),
   fit_end: z.string().nullish(),
@@ -618,6 +619,25 @@ export const IVSurfaceForecastSchema = z.object({
   validation_rmse_by_components: z.record(z.string(), z.number()),
   fourth_component_improvement_percent: z.number().nullish(),
   component_selection_note: z.string(),
+  validation_model_rmse: z.number().nullish(),
+  validation_baseline_rmse: z.number().nullish(),
+  validation_improvement_over_baseline_percent: z.number().nullish(),
+  validation_directional_accuracy_percent: z.number().nullish(),
+  ssvi_parameters: z.object({
+    a: z.number(),
+    p: z.number(),
+    rho: z.number(),
+    eta: z.number(),
+  }).nullish(),
+  path_features: z.record(z.string(), z.record(z.string(), z.number())).nullish(),
+  static_arbitrage_checks: z.object({
+    calendar_monotonic: z.boolean(),
+    butterfly_condition: z.boolean(),
+    finite_positive_scan: z.boolean(),
+    butterfly_bound: z.number(),
+    butterfly_limit: z.number(),
+    passed: z.boolean(),
+  }).nullish(),
   tenor_grid_days: z.array(z.number()),
   comparisons: z.array(z.object({
     label: z.string(),
@@ -630,6 +650,8 @@ export const IVSurfaceForecastSchema = z.object({
     difference_vol_points: z.number(),
     model_error_vol_points: z.number(),
     material_threshold_vol_points: z.number(),
+    standardized_gap: z.number().nullish(),
+    significant: z.boolean().nullish(),
     status: z.enum(["cheap", "expensive", "in_line"]),
     explanation: z.string(),
   })),
@@ -783,6 +805,48 @@ export const IVModelEvaluationSchema = z.object({
     source: z.string(),
     methodology: z.string().optional(),
     limitation: z.string().optional(),
+  }),
+  path_dependent_backtest: z.object({
+    available: z.boolean(),
+    verdict: z.string(),
+    verdict_detail: z.string(),
+    statistically_significant: z.boolean().optional(),
+    difference_statistically_significant: z.boolean().optional(),
+    significance_result: z.string().optional(),
+    bootstrap_p_value_two_sided: z.number().nullable().optional(),
+    observations: z.number(),
+    symbols: z.number().optional(),
+    target_sessions: z.number().optional(),
+    first_target_date: z.string().optional(),
+    last_target_date: z.string().optional(),
+    excluded_for_gaps: z.number(),
+    model_rmse: z.number().optional(),
+    baseline_rmse: z.number().optional(),
+    fpca_rmse_same_sample: z.number().optional(),
+    improvement_over_baseline_percent: z.number().optional(),
+    improvement_over_fpca_percent: z.number().nullable().optional(),
+    improvement_confidence_interval_95: z.array(z.number().nullable()).length(2).optional(),
+    bootstrap_probability_model_beats_baseline_percent: z.number().nullable().optional(),
+    model_win_rate_percent: z.number().optional(),
+    directional_accuracy_percent: z.number().nullable().optional(),
+    meaningful_directional_cells: z.number().optional(),
+    average_calibration_rmse: z.number().optional(),
+    static_arbitrage_pass_rate_percent: z.number().optional(),
+    per_symbol: z.array(z.object({
+      ticker: z.string(),
+      observations: z.number(),
+      model_rmse: z.number(),
+      baseline_rmse: z.number(),
+      improvement_over_baseline_percent: z.number(),
+      model_win_rate_percent: z.number(),
+      directional_accuracy_percent: z.number().nullable(),
+    })).optional(),
+    source: z.string(),
+    paper_url: z.string(),
+    methodology: z.string().optional(),
+    limitation: z.string().optional(),
+    strengths: z.array(z.string()),
+    weaknesses: z.array(z.string()),
   }),
   thresholds: z.object({
     fpca_explained_variance_healthy_percent: z.number(),
@@ -1333,6 +1397,7 @@ export const IntradayCopulaTradeSchema = z.object({
   entry_kss_statistic: z.number(),
   copula_family: z.string(),
   profit_target_percent: z.number(),
+  stop_loss_percent: z.number(),
   entry_price_timestamp: z.string(),
   entry_price_source: z.string(),
   created_at: z.string(),
@@ -1376,10 +1441,14 @@ export const IntradayCopulaTrackerResponseSchema = z.object({
   last_entry_ist: z.string(),
   forced_exit_ist: z.string(),
   eligible_pairs: z.number(),
+  returned_candidates: z.number(),
   entry_signals: z.number(),
   created_trades: z.number(),
   queued_entries_created: z.number(),
   generated_at: z.string(),
+  snapshot_bar_end: z.string().nullish(),
+  cached: z.boolean().default(false),
+  refreshing: z.boolean().default(false),
   data_source: z.string(),
   candidates: z.array(IntradayCopulaCandidateSchema),
   pending_entries: z.array(IntradayCopulaPendingEntrySchema),
@@ -1713,6 +1782,12 @@ export const api = {
       IVSurfaceForecastSchema.parse(d)
     );
   },
+  getCompanyPathDependentIVSurfaceForecast: (ticker: string, expiry?: string) => {
+    const query = expiry ? `?expiry=${encodeURIComponent(expiry)}` : "";
+    return request(
+      `/api/companies/${ticker}/path-dependent-iv-surface-forecast${query}`
+    ).then((d) => IVSurfaceForecastSchema.parse(d));
+  },
   listCompanyPaperIVTrades: (ticker: string, portfolioId: string) =>
     request(
       `/api/companies/${ticker}/paper-iv-trades?portfolio_id=${encodeURIComponent(portfolioId)}`
@@ -1741,7 +1816,8 @@ export const api = {
     portfolioId: string,
     expiry: string,
     strategyId?: string,
-    quantityLots = 1
+    quantityLots = 1,
+    modelFamily: "fpca_var" | "path_dependent_ssvi" = "fpca_var"
   ) =>
     request(`/api/companies/${ticker}/paper-iv-trades`, {
       method: "POST",
@@ -1750,6 +1826,7 @@ export const api = {
         expiry,
         strategy_id: strategyId,
         quantity_lots: quantityLots,
+        model_family: modelFamily,
       }),
     }).then((d) => PaperIVTradeSchema.parse(d)),
   closeCompanyPaperIVTrade: (
@@ -1828,10 +1905,10 @@ export const api = {
     request(
       `/api/trade-suggestions/method-lab/copula-signals?limit=${limit}&refresh=${refresh ? "true" : "false"}`
     ).then((d) => CopulaPairSignalsResponseSchema.parse(d)),
-  syncIntradayCopulaTracker: (portfolioId: string) =>
+  syncIntradayCopulaTracker: (portfolioId: string, candidateLimit = 12) =>
     request(`/api/trade-suggestions/method-lab/intraday-copula/sync`, {
       method: "POST",
-      body: JSON.stringify({ portfolio_id: portfolioId }),
+      body: JSON.stringify({ portfolio_id: portfolioId, candidate_limit: candidateLimit }),
     }).then((d) => IntradayCopulaTrackerResponseSchema.parse(d)),
   closeIntradayCopulaTrade: (portfolioId: string, tradeId: string) =>
     request(`/api/trade-suggestions/method-lab/intraday-copula/trades/${tradeId}/close`, {

@@ -98,6 +98,7 @@ class IntradayCopulaTradeOut(BaseModel):
     entry_kss_statistic: float
     copula_family: str
     profit_target_percent: float
+    stop_loss_percent: float
     entry_price_timestamp: datetime
     entry_price_source: str
     created_at: datetime
@@ -130,6 +131,7 @@ class IntradayCopulaPendingEntryOut(BaseModel):
 
 class IntradayCopulaTrackerSync(BaseModel):
     portfolio_id: UUID
+    candidate_limit: int = Field(default=12, ge=1, le=160)
 
 
 class IntradayCopulaTrackerResponse(BaseModel):
@@ -145,10 +147,14 @@ class IntradayCopulaTrackerResponse(BaseModel):
     last_entry_ist: str
     forced_exit_ist: str
     eligible_pairs: int
+    returned_candidates: int
     entry_signals: int
     created_trades: int
     queued_entries_created: int
     generated_at: datetime
+    snapshot_bar_end: datetime | None = None
+    cached: bool = False
+    refreshing: bool = False
     data_source: str
     candidates: list[IntradayCopulaCandidate] = Field(default_factory=list)
     pending_entries: list[IntradayCopulaPendingEntryOut] = Field(default_factory=list)

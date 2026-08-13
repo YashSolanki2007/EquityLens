@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
-from datetime import UTC, datetime, time, timedelta
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -13,9 +14,11 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 import yfinance as yf
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import FileCache, cache_key
+from app.core.config import get_settings
 from app.core.db import get_session_factory
 from app.models import (
     PaperIntradayCopulaPendingEntry,
@@ -59,10 +62,27 @@ FORCED_EXIT_IST = time(15, 10)
 MARKET_OPEN_IST = time(9, 15)
 MARKET_CLOSE_IST = time(15, 30)
 PROFIT_TARGET_PERCENT = 0.5
+STOP_LOSS_PERCENT = 0.1
 TRACKED_GROSS_NOTIONAL_INR = 100_000.0
 PRICE_SOURCE = "Yahoo Finance completed five-minute adjusted spot bars"
 NEXT_OPEN_PRICE_SOURCE = "Yahoo Finance first five-minute adjusted cash bar open"
+SNAPSHOT_CACHE_VERSION = "intraday-copula-snapshot-v2"
+SNAPSHOT_CACHE_NAMESPACE = "intraday_copula_tracker"
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class IntradayCandidateSnapshot:
+    slot: str
+    generated_at: datetime
+    snapshot_bar_end: datetime | None
+    candidates: list[IntradayCopulaCandidate]
+    cached: bool
+    current: bool
+
+
+_snapshot_refresh_lock = asyncio.Lock()
+_snapshot_refresh_task: asyncio.Task[None] | None = None
 
 
 def _as_ist_index(index: pd.Index) -> pd.DatetimeIndex:
@@ -314,7 +334,91 @@ def build_intraday_candidate(
     )
 
 
-async def scan_intraday_candidates(
+def intraday_snapshot_slot(now: datetime) -> str:
+    """Return the completed NSE five-minute slot that should back the UI.
+
+    The key stops advancing after the cash close and over weekends, so simply
+    reopening the page cannot invalidate an otherwise current snapshot.
+    """
+
+    now_ist = now.astimezone(INDIA_TZ)
+    session_date = now_ist.date()
+    session_time = now_ist.time().replace(tzinfo=None)
+    if now_ist.weekday() >= 5 or session_time < time(9, 20):
+        session_date -= timedelta(days=1)
+        while session_date.weekday() >= 5:
+            session_date -= timedelta(days=1)
+        slot_time = MARKET_CLOSE_IST
+    elif session_time >= MARKET_CLOSE_IST:
+        slot_time = MARKET_CLOSE_IST
+    else:
+        slot_time = time(
+            now_ist.hour,
+            now_ist.minute // BAR_MINUTES * BAR_MINUTES,
+        )
+    return datetime.combine(session_date, slot_time, tzinfo=INDIA_TZ).isoformat()
+
+
+def _snapshot_cache() -> FileCache:
+    return FileCache(get_settings().cache_path, SNAPSHOT_CACHE_NAMESPACE)
+
+
+def _snapshot_key(slot: str) -> str:
+    return cache_key(SNAPSHOT_CACHE_VERSION, slot)
+
+
+def _load_candidate_snapshot(
+    *,
+    slot: str,
+    latest: bool = False,
+) -> IntradayCandidateSnapshot | None:
+    key = _snapshot_key("latest" if latest else slot)
+    payload = _snapshot_cache().get(key, ttl_seconds=None)
+    if not isinstance(payload, dict):
+        return None
+    try:
+        candidates = [
+            IntradayCopulaCandidate.model_validate(candidate)
+            for candidate in payload.get("candidates", [])
+        ]
+        snapshot_slot = str(payload["slot"])
+        generated_at = datetime.fromisoformat(str(payload["generated_at"]))
+        raw_bar_end = payload.get("snapshot_bar_end")
+        snapshot_bar_end = (
+            datetime.fromisoformat(str(raw_bar_end)) if raw_bar_end else None
+        )
+    except (KeyError, TypeError, ValueError):
+        return None
+    return IntradayCandidateSnapshot(
+        slot=snapshot_slot,
+        generated_at=generated_at,
+        snapshot_bar_end=snapshot_bar_end,
+        candidates=candidates,
+        cached=True,
+        current=snapshot_slot == slot,
+    )
+
+
+def _store_candidate_snapshot(snapshot: IntradayCandidateSnapshot) -> None:
+    payload = {
+        "slot": snapshot.slot,
+        "generated_at": snapshot.generated_at.isoformat(),
+        "snapshot_bar_end": (
+            snapshot.snapshot_bar_end.isoformat()
+            if snapshot.snapshot_bar_end is not None
+            else None
+        ),
+        "candidates": [
+            candidate.model_dump(mode="json") for candidate in snapshot.candidates
+        ],
+    }
+    cache = _snapshot_cache()
+    source = "Yahoo Finance completed five-minute adjusted spot bars"
+    cache.put(_snapshot_key(snapshot.slot), payload, source=source)
+    cache.put(_snapshot_key("latest"), payload, source=source)
+
+
+async def _scan_intraday_candidates_uncached(
     db: AsyncSession,
     *,
     now: datetime | None = None,
@@ -370,6 +474,53 @@ async def scan_intraday_candidates(
     return results
 
 
+async def refresh_intraday_candidate_snapshot(
+    db: AsyncSession,
+    *,
+    now: datetime | None = None,
+    force: bool = False,
+) -> IntradayCandidateSnapshot:
+    """Compute at most one shared candidate matrix per completed five-minute bar."""
+
+    resolved_now = now or datetime.now(UTC)
+    slot = intraday_snapshot_slot(resolved_now)
+    if not force:
+        cached = _load_candidate_snapshot(slot=slot)
+        if cached is not None:
+            return cached
+    async with _snapshot_refresh_lock:
+        if not force:
+            cached = _load_candidate_snapshot(slot=slot)
+            if cached is not None:
+                return cached
+        candidates = await _scan_intraday_candidates_uncached(db, now=resolved_now)
+        snapshot_bar_end = max(
+            (candidate.latest_bar_end for candidate in candidates),
+            default=None,
+        )
+        snapshot = IntradayCandidateSnapshot(
+            slot=slot,
+            generated_at=datetime.now(UTC),
+            snapshot_bar_end=snapshot_bar_end,
+            candidates=candidates,
+            cached=False,
+            current=True,
+        )
+        _store_candidate_snapshot(snapshot)
+        return snapshot
+
+
+async def scan_intraday_candidates(
+    db: AsyncSession,
+    *,
+    now: datetime | None = None,
+) -> list[IntradayCopulaCandidate]:
+    """Compatibility wrapper returning the cached per-bar candidate list."""
+
+    snapshot = await refresh_intraday_candidate_snapshot(db, now=now)
+    return snapshot.candidates
+
+
 def calculate_intraday_mark(
     trade: PaperIntradayCopulaTrade,
     *,
@@ -415,6 +566,8 @@ def automatic_intraday_exit_reason(
 ) -> str | None:
     if math.isfinite(return_percent) and return_percent >= trade.profit_target_percent:
         return "profit_target_0_5"
+    if math.isfinite(return_percent) and return_percent <= -STOP_LOSS_PERCENT:
+        return "stop_loss_0_1"
     if (
         0.5 - EXIT_THRESHOLD <= h_a_given_b <= 0.5 + EXIT_THRESHOLD
         and 0.5 - EXIT_THRESHOLD <= h_b_given_a <= 0.5 + EXIT_THRESHOLD
@@ -730,6 +883,7 @@ def intraday_trade_response(
         "entry_kss_statistic": trade.entry_kss_statistic,
         "copula_family": trade.copula_family,
         "profit_target_percent": trade.profit_target_percent,
+        "stop_loss_percent": STOP_LOSS_PERCENT,
         "entry_price_timestamp": trade.entry_price_timestamp,
         "entry_price_source": trade.entry_price_source,
         "created_at": trade.created_at,
@@ -740,6 +894,79 @@ def intraday_trade_response(
         "exit_h_b_given_a": trade.exit_h_b_given_a,
         "latest_mark": serialized_marks[-1] if serialized_marks else None,
         "marks": serialized_marks,
+    }
+
+
+async def backfill_intraday_stop_loss(
+    db: AsyncSession,
+    session_date: date,
+) -> dict[str, int]:
+    """Re-evaluate a session causally under the current automatic exit rules."""
+
+    trades = list(
+        (
+            await db.execute(
+                select(PaperIntradayCopulaTrade)
+                .where(PaperIntradayCopulaTrade.session_date == session_date)
+                .order_by(PaperIntradayCopulaTrade.created_at)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    updated = 0
+    stop_losses = 0
+    removed_marks = 0
+    for trade in trades:
+        marks = await intraday_trade_marks(db, trade.id)
+        exit_mark: PaperIntradayCopulaTradeMark | None = None
+        exit_reason: str | None = None
+        for mark in marks:
+            reason = automatic_intraday_exit_reason(
+                trade,
+                return_percent=mark.return_percent,
+                h_a_given_b=mark.h_a_given_b,
+                h_b_given_a=mark.h_b_given_a,
+                quote_timestamp=mark.quote_timestamp,
+            )
+            if reason is not None:
+                exit_mark = mark
+                exit_reason = reason
+                break
+        if exit_mark is None or exit_reason is None:
+            continue
+        changed = (
+            trade.status != "closed"
+            or trade.closed_at != exit_mark.quote_timestamp
+            or trade.exit_reason != exit_reason
+            or trade.realized_pnl != exit_mark.total_pnl
+        )
+        if changed:
+            trade.status = "closed"
+            trade.closed_at = exit_mark.quote_timestamp
+            trade.realized_pnl = exit_mark.total_pnl
+            trade.exit_reason = exit_reason
+            trade.exit_h_a_given_b = exit_mark.h_a_given_b
+            trade.exit_h_b_given_a = exit_mark.h_b_given_a
+            updated += 1
+        if exit_reason == "stop_loss_0_1":
+            stop_losses += 1
+        later_mark_ids = [
+            mark.id for mark in marks if mark.quote_timestamp > exit_mark.quote_timestamp
+        ]
+        if later_mark_ids:
+            await db.execute(
+                delete(PaperIntradayCopulaTradeMark).where(
+                    PaperIntradayCopulaTradeMark.id.in_(later_mark_ids)
+                )
+            )
+            removed_marks += len(later_mark_ids)
+    await db.commit()
+    return {
+        "trades_scanned": len(trades),
+        "trades_updated": updated,
+        "stop_loss_exits": stop_losses,
+        "later_marks_removed": removed_marks,
     }
 
 
@@ -791,6 +1018,9 @@ async def sync_intraday_copula_tracker(
     portfolio_id: UUID,
     *,
     now: datetime | None = None,
+    wait_for_fresh: bool = False,
+    snapshot: IntradayCandidateSnapshot | None = None,
+    candidate_limit: int = 12,
 ) -> IntradayCopulaTrackerResponse:
     resolved_now = now or datetime.now(UTC)
     subscription = await db.get(PaperIntradayCopulaTrackerSubscription, portfolio_id)
@@ -798,18 +1028,36 @@ async def sync_intraday_copula_tracker(
         subscription = PaperIntradayCopulaTrackerSubscription(portfolio_id=portfolio_id)
         db.add(subscription)
     subscription.last_synced_at = resolved_now
-    candidates = await scan_intraday_candidates(db, now=resolved_now)
+    # Persist the subscription before a detached refresh opens its own session.
+    await db.commit()
+
+    slot = intraday_snapshot_slot(resolved_now)
+    if snapshot is None:
+        snapshot = _load_candidate_snapshot(slot=slot)
+    if snapshot is None and wait_for_fresh:
+        snapshot = await refresh_intraday_candidate_snapshot(db, now=resolved_now)
+    if snapshot is None:
+        snapshot = _load_candidate_snapshot(slot=slot, latest=True)
+    snapshot_is_current = snapshot is not None and snapshot.slot == slot
+    refreshing = not snapshot_is_current
+    if refreshing and not wait_for_fresh:
+        _schedule_intraday_snapshot_refresh(resolved_now)
+
+    candidates = snapshot.candidates if snapshot is not None else []
+    can_advance_trades = snapshot_is_current
     by_pair = {candidate.pair_id: candidate for candidate in candidates}
     trades = await list_intraday_trades(db, portfolio_id)
 
     for trade in trades:
-        if trade.status == "open" and trade.pair_id in by_pair:
+        if can_advance_trades and trade.status == "open" and trade.pair_id in by_pair:
             await _apply_candidate_marks(db, trade, by_pair[trade.pair_id])
 
     session_keys = {(trade.pair_id, trade.session_date) for trade in trades}
     pending_entries = await list_pending_entries(db, portfolio_id)
     created = 0
     for pending in pending_entries:
+        if not can_advance_trades:
+            break
         candidate = by_pair.get(pending.pair_id)
         if candidate is None or not pending_can_execute(pending, candidate):
             continue
@@ -835,6 +1083,8 @@ async def sync_intraday_copula_tracker(
         pending.entered_trade_id = existing_trade.id
 
     for candidate in candidates:
+        if not can_advance_trades:
+            break
         session_date = candidate.latest_bar_end.astimezone(INDIA_TZ).date()
         if not candidate.can_enter or (candidate.pair_id, session_date) in session_keys:
             continue
@@ -852,6 +1102,8 @@ async def sync_intraday_copula_tracker(
         entry.pair_id for entry in pending_entries if entry.status == "queued"
     }
     for candidate in candidates:
+        if not can_advance_trades:
+            break
         signal_date = candidate.latest_bar_end.astimezone(INDIA_TZ).date()
         key = (candidate.pair_id, signal_date)
         if (
@@ -886,15 +1138,21 @@ async def sync_intraday_copula_tracker(
         last_entry_ist=LAST_ENTRY_IST.strftime("%H:%M"),
         forced_exit_ist=FORCED_EXIT_IST.strftime("%H:%M"),
         eligible_pairs=len(candidates),
+        returned_candidates=min(len(candidates), candidate_limit),
         entry_signals=sum(candidate.signal.startswith("enter_") for candidate in candidates),
         created_trades=created,
         queued_entries_created=queued_created,
-        generated_at=resolved_now,
+        generated_at=(snapshot.generated_at if snapshot is not None else resolved_now),
+        snapshot_bar_end=(
+            snapshot.snapshot_bar_end if snapshot is not None else None
+        ),
+        cached=(snapshot.cached if snapshot is not None else False),
+        refreshing=refreshing,
         data_source=(
             "Yahoo Finance adjusted daily closes for the 504-session regression; "
-            "completed five-minute adjusted spot bars for copula states"
+            "one shared persisted snapshot per completed five-minute bar"
         ),
-        candidates=candidates,
+        candidates=candidates[:candidate_limit],
         pending_entries=[pending_entry_response(entry) for entry in pending_entries],
         trades=serialized_trades,
         limitations=[
@@ -903,6 +1161,7 @@ async def sync_intraday_copula_tracker(
             "Copula margins and dependence are fitted from prior-session five-minute bars only. The latest completed five-minute bar is evaluated out of sample for the current session.",
             "Yahoo intraday history is unofficial, delayed and limited to roughly 60 calendar days. Production research requires a licensed point-in-time source with bid/ask data and corporate-action QA.",
             "The percentage P&L uses a theoretical INR 100,000 gross fractional-share hedge. It excludes brokerage, taxes, bid/ask spread, slippage, margin and short-sale execution failures.",
+            "The -0.10% stop loss is evaluated on completed five-minute bars. A gap or a move within the bar can therefore produce a realised paper loss worse than -0.10%.",
             "Only one entry per pair per session is permitted. Entry signals first observed after the 14:30 cutoff or while the market is closed are frozen, queued, and filled from the first five-minute bar Open of the next actual NSE session. Every remaining position is marked for closure at the first completed bar ending at or after 15:10 IST.",
         ],
     )
@@ -927,41 +1186,56 @@ async def close_intraday_copula_trade(
     await db.commit()
 
 
+async def _refresh_and_advance_intraday_subscribers(now: datetime) -> None:
+    """Refresh once, then reuse the same immutable snapshot for every portfolio."""
+
+    try:
+        async with get_session_factory()() as db:
+            snapshot = await refresh_intraday_candidate_snapshot(db, now=now)
+            portfolio_ids = list(
+                (
+                    await db.execute(
+                        select(PaperIntradayCopulaTrackerSubscription.portfolio_id)
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            for portfolio_id in portfolio_ids:
+                await sync_intraday_copula_tracker(
+                    db,
+                    portfolio_id,
+                    now=now,
+                    snapshot=snapshot,
+                )
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.warning("Intraday copula snapshot refresh failed", exc_info=True)
+
+
+def _schedule_intraday_snapshot_refresh(now: datetime) -> None:
+    global _snapshot_refresh_task
+
+    if _snapshot_refresh_task is not None and not _snapshot_refresh_task.done():
+        return
+    _snapshot_refresh_task = asyncio.create_task(
+        _refresh_and_advance_intraday_subscribers(now),
+        name="intraday-copula-snapshot-refresh",
+    )
+
+
 async def run_intraday_copula_recorder() -> None:
     """Refresh intraday and once per closed-market period for queued entries."""
 
-    last_cycle: tuple[str, object, object] | tuple[str, object] | None = None
+    last_slot: str | None = None
     while True:
         try:
             now = datetime.now(INDIA_TZ)
-            bucket = now.replace(minute=now.minute // 5 * 5, second=0, microsecond=0)
-            in_session = time(9, 20) <= now.time() <= time(15, 20)
-            if now.weekday() < 5 and in_session:
-                cycle: tuple[str, object, object] | tuple[str, object] = (
-                    "market",
-                    now.date(),
-                    bucket.time(),
-                )
-            elif now.time() > time(15, 20):
-                cycle = ("after_close", now.date())
-            else:
-                cycle = ("pre_open", now.date())
-            if cycle != last_cycle:
-                async with get_session_factory()() as db:
-                    portfolio_ids = list(
-                        (
-                            await db.execute(
-                                select(
-                                    PaperIntradayCopulaTrackerSubscription.portfolio_id
-                                )
-                            )
-                        )
-                        .scalars()
-                        .all()
-                    )
-                    for portfolio_id in portfolio_ids:
-                        await sync_intraday_copula_tracker(db, portfolio_id, now=now)
-                last_cycle = cycle
+            slot = intraday_snapshot_slot(now)
+            if slot != last_slot:
+                await _refresh_and_advance_intraday_subscribers(now)
+                last_slot = slot
         except asyncio.CancelledError:
             raise
         except Exception:
