@@ -878,6 +878,7 @@ export const IVModelEvaluationSchema = z.object({
       dynamic_covariance: z.string(),
       component_selection: z.array(z.string()),
       mcs: z.string(),
+      stationarity_test: z.string(),
     }),
     nse_adaptation: z.object({
       exact_proposed_model_methodology: z.boolean(),

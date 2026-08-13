@@ -801,6 +801,67 @@ def model_confidence_set(
     }
 
 
+def functional_stationarity_test(
+    curves: np.ndarray,
+    *,
+    monte_carlo_replications: int = 1_000,
+    brownian_terms: int = 500,
+    seed: int = 20_220_711,
+) -> dict[str, float | int | bool]:
+    """Horvath-Kokoszka-Rice test matching ftsa::T_stationary defaults."""
+
+    values = np.asarray(curves, dtype=float)
+    if values.ndim != 2 or len(values) < 20:
+        raise ValueError("The stationarity test needs observations by curve grid.")
+    observations, grid_points = values.shape
+    centered = values - values.mean(axis=0)
+    bandwidth = math.sqrt(observations)
+    covariance = _lag_covariance(centered, 0)
+    for lag in range(1, observations):
+        weight = min(1.0, max(2.0 - 2.0 * lag / bandwidth, 0.0))
+        if weight == 0:
+            break
+        lagged = _lag_covariance(centered, lag)
+        covariance += weight * (lagged + lagged.T)
+    eigenvalues = np.maximum(
+        np.linalg.eigvalsh((covariance + covariance.T) / 2.0)[::-1] / grid_points,
+        0.0,
+    )
+    positive = eigenvalues[eigenvalues > 1e-14]
+    component_count = min(len(positive), 15)
+    if component_count == 0:
+        return {
+            "p_value": 1.0,
+            "test_statistic": 0.0,
+            "components": 0,
+            "monte_carlo_replications": monte_carlo_replications,
+            "rejects_stationarity_at_5_percent": False,
+        }
+    cumulative = np.cumsum(values, axis=0)
+    full_sum = cumulative[-1]
+    fractions = np.arange(1, observations + 1, dtype=float)[:, None] / observations
+    bridges = (cumulative - fractions * full_sum) / math.sqrt(observations)
+    statistic = float(np.sum(bridges**2) / (observations * grid_points))
+    rng = np.random.default_rng(seed)
+    normal_draws = rng.normal(
+        size=(monte_carlo_replications, component_count, brownian_terms)
+    )
+    denominators = np.pi * np.arange(1, brownian_terms + 1, dtype=float)
+    simulations = np.sum(
+        positive[:component_count][None, :, None]
+        * (normal_draws / denominators[None, None, :]) ** 2,
+        axis=(1, 2),
+    )
+    p_value = float(np.mean(simulations >= statistic))
+    return {
+        "p_value": p_value,
+        "test_statistic": statistic,
+        "components": component_count,
+        "monte_carlo_replications": monte_carlo_replications,
+        "rejects_stationarity_at_5_percent": p_value < 0.05,
+    }
+
+
 def validate_paper_sample(surfaces: np.ndarray) -> None:
     values = np.asarray(surfaces, dtype=float)
     if values.ndim != 3 or values.shape[1:] != (3, 5):
@@ -1155,6 +1216,22 @@ def run_nse_replication(
                     "ticker": symbol,
                     "first_date": all_dates[0],
                     "last_date": all_dates[-1],
+                    "stationarity_tests": [
+                        {
+                            "maturity_days": maturity_days,
+                            **functional_stationarity_test(
+                                prepare_nse_paper_grid(
+                                    np.asarray(history.get("surfaces") or [], dtype=float)[
+                                        -PAPER_TOTAL_OBSERVATIONS:
+                                    ]
+                                )[:, maturity_index, :],
+                                seed=20_220_711 + maturity_index,
+                            ),
+                        }
+                        for maturity_index, maturity_days in enumerate(
+                            NSE_REPLICATION_TENOR_DAYS
+                        )
+                    ],
                 }
             )
             per_symbol.append(result)
@@ -1205,6 +1282,7 @@ def run_nse_replication(
             "dynamic_covariance": "Rice-Shang plug-in bandwidth with Bartlett kernel",
             "component_selection": ["99% CPV (90% at multilevel stages)", "K=4"],
             "mcs": "95% Hansen-Lunde-Nason set; 5,000 block bootstraps; Tmax and TR",
+            "stationarity_test": "Horvath-Kokoszka-Rice with ftsa defaults and 1,000 Monte Carlo draws",
         },
         "nse_adaptation": {
             "exact_proposed_model_methodology": True,

@@ -7,6 +7,7 @@ from app.services.market_data.dynamic_functional_iv import (
     expanding_window_backtest,
     forecast_six_models,
     forecast_six_models_both_rules,
+    functional_stationarity_test,
     model_confidence_set,
     paper_errors,
     prepare_nse_paper_grid,
@@ -130,6 +131,18 @@ def test_mcs_retains_lower_loss_model():
     )
     assert "better" in report["included"]
     assert "worse" in report["excluded"]
+
+
+def test_functional_stationarity_test_returns_paper_decision_fields():
+    report = functional_stationarity_test(
+        _surfaces(80)[:, 0, :],
+        monte_carlo_replications=100,
+        brownian_terms=50,
+    )
+    assert 0 <= report["p_value"] <= 1
+    assert report["components"] <= 5
+    assert report["monte_carlo_replications"] == 100
+    assert isinstance(report["rejects_stationarity_at_5_percent"], bool)
 
 
 def test_nse_grid_uses_three_paper_series():
