@@ -70,12 +70,13 @@ DELTA_BUCKETS = (
     ("25Δ call", "call", 0.25),
     ("10Δ call", "call", 0.10),
 )
-# Five years is the longest unadjusted daily underlying history currently loaded
-# for all covered stocks. The option history is collected independently from NSE
-# bhavcopies and persisted, so request-time forecasts never repeat the backfill.
+# Keep enough NSE history to reproduce the 2,349-observation sample used by
+# Shang and Kearney (1,827 training observations plus 522 holdout observations).
+# The option history is collected independently from NSE bhavcopies and persisted,
+# so request-time forecasts never repeat the backfill.
 TARGET_HISTORY_SURFACES = 2_500
-HISTORY_BACKFILL_YEARS = 10
-CANDIDATE_WEEKDAYS = 2_800
+HISTORY_BACKFILL_YEARS = 20
+CANDIDATE_WEEKDAYS = 5_600
 INCREMENTAL_REFRESH_WEEKDAYS = 15
 BACKFILL_BATCH_DATES = 4
 MINIMUM_HISTORY_SURFACES = 35
@@ -579,12 +580,15 @@ def _normalize_bhavcopy_frame(
             with archive.open(names[0]) as source:
                 return pd.read_csv(source, usecols=use_columns), "NSE UDiFF bhavcopy"
 
+        option_type_column = (
+            "OPTION_TYP" if "OPTION_TYP" in columns else "OPTIONTYPE"
+        )
         legacy_columns = {
             "INSTRUMENT",
             "SYMBOL",
             "EXPIRY_DT",
             "STRIKE_PR",
-            "OPTION_TYP",
+            option_type_column,
             "CLOSE",
             "OPEN_INT",
             "CONTRACTS",
@@ -624,6 +628,7 @@ def _normalize_bhavcopy_frame(
             "EXPIRY_DT": "XpryDt",
             "STRIKE_PR": "StrkPric",
             "OPTION_TYP": "OptnTp",
+            "OPTIONTYPE": "OptnTp",
             "CLOSE": "ClsPric",
             "OPEN_INT": "OpnIntrst",
             "CONTRACTS": "TtlTradgVol",
@@ -836,7 +841,7 @@ async def backfill_historical_surfaces(
     manifest_cache = FileCache(get_settings().cache_path, "iv_surface_backfill")
     manifest_key = cache_key(
         SURFACE_DATA_VERSION,
-        "five-year-date-first",
+        "paper-sample-date-first-v2",
         str(years),
         ",".join(selected),
     )

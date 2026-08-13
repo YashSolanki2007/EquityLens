@@ -178,6 +178,24 @@ def test_legacy_bhavcopy_is_normalized_with_historical_underlying_close():
     assert frame.loc[0, "TtlTradgVol"] == 100
 
 
+def test_early_legacy_bhavcopy_optiontype_alias_is_supported():
+    legacy = (
+        "INSTRUMENT,SYMBOL,EXPIRY_DT,STRIKE_PR,OPTIONTYPE,CLOSE,CONTRACTS,OPEN_INT\n"
+        "OPTSTK,TEST,31-AUG-2006,100,PE,4.75,80,3000\n"
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("fo14AUG2006bhav.csv", legacy)
+
+    frame, source = _normalize_bhavcopy_frame(
+        buffer.getvalue(),
+        spot_by_symbol={"TEST": 101.0},
+    )
+
+    assert source == "NSE legacy F&O bhavcopy"
+    assert frame.loc[0, "OptnTp"] == "PE"
+
+
 def test_component_selection_uses_smallest_model_reaching_99_percent():
     selected, retained = _select_component_count(
         np.asarray([60, 85, 93, 97, 98.7, 99.3, 99.7, 99.9])

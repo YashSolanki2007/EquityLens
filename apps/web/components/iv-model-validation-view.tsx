@@ -71,6 +71,7 @@ export function IVModelValidationView() {
     strengths: [],
     weaknesses: [],
   };
+  const dynamic = data.dynamic_functional_backtest;
   const collection = run.data?.collection;
 
   return (
@@ -84,12 +85,12 @@ export function IVModelValidationView() {
             </div>
             <h1 className="mt-2 text-2xl font-semibold tracking-[-0.035em]">IV surface validation lab</h1>
             <p className="mt-2 max-w-4xl text-sm leading-6 text-muted-foreground">
-              Compare the existing FPCA–VAR model with the path-dependent SSVI challenger. Every out-of-sample target is excluded from fitting and judged against the same no-change surface.
+              Compare the production FPCA–VAR path, path-dependent SSVI, and the Shang–Kearney dynamic functional time-series replication. Every out-of-sample target is excluded from fitting.
             </p>
           </div>
           <Button onClick={() => run.mutate()} disabled={run.isPending}>
             <RefreshCw className={run.isPending ? "size-4 animate-spin" : "size-4"} />
-            {run.isPending ? "Running causal backtests…" : "Run collection and both backtests"}
+            {run.isPending ? "Running collection and SSVI…" : "Run collection and SSVI backtest"}
           </Button>
         </div>
         <div className="grid gap-px bg-border/70 sm:grid-cols-2 lg:grid-cols-5">
@@ -214,6 +215,65 @@ export function IVModelValidationView() {
           ) : null}
         </CardContent>
       </Card>
+
+      {dynamic ? (
+        <Card className="overflow-hidden border-sky-700/25">
+          <CardHeader className="border-b border-border/70 bg-sky-950/[0.025]">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <CardTitle className="text-base">Shang–Kearney dynamic functional IV replication</CardTitle>
+                <p className="mt-1 max-w-4xl text-xs leading-5 text-muted-foreground">
+                  Six paper models: FTS, DFTS, MFTS, DMFTS, MLFTS and DMLFTS, with both 99% CPV and fixed K=4 specifications.
+                </p>
+              </div>
+              <Badge variant="outline">{dynamic.verdict}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5 pt-5">
+            <div className="flex gap-2 text-sm">
+              {dynamic.available ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-600" /> : <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />}
+              <p className="leading-6 text-muted-foreground">{dynamic.verdict_detail}</p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Training window</p><p className="mt-2 font-mono text-xl font-semibold">{dynamic.paper_design.initial_training_observations}</p></div>
+              <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Holdout window</p><p className="mt-2 font-mono text-xl font-semibold">{dynamic.paper_design.out_of_sample_observations}</p></div>
+              <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Forecast horizons</p><p className="mt-2 font-mono text-xl font-semibold">{dynamic.paper_design.horizons.join("/")}d</p></div>
+              <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Eligible stocks</p><p className="mt-2 font-mono text-xl font-semibold">{dynamic.eligibility.eligible_count}</p><p className="mt-1 text-[10px] text-muted-foreground">{dynamic.eligibility.required_surfaces_per_symbol} surfaces required</p></div>
+              <div className="rounded-md bg-muted/30 p-3"><p className="terminal-label">Completed stocks</p><p className="mt-2 font-mono text-xl font-semibold">{dynamic.completed_symbols}</p></div>
+            </div>
+            {dynamic.leaderboard.length ? (
+              <div className="overflow-auto rounded-md border border-border/70">
+                <table className="w-full min-w-[620px] text-left text-[11px]">
+                  <thead className="bg-muted/95 text-muted-foreground"><tr>{["Rank", "Component rule", "Model", "One-day MAFE", "Stocks"].map((item) => <th key={item} className="px-3 py-2 font-medium">{item}</th>)}</tr></thead>
+                  <tbody>{dynamic.leaderboard.slice(0, 12).map((item, index) => (
+                    <tr key={`${item.component_rule}-${item.model}`} className="border-t border-border/60">
+                      <td className="px-3 py-2 font-mono">{index + 1}</td><td className="px-3 py-2 font-mono uppercase">{item.component_rule}</td><td className="px-3 py-2 font-semibold">{item.model}</td><td className="px-3 py-2 font-mono">{metric(item.mean_one_day_mafe, " pts", 4)}</td><td className="px-3 py-2 font-mono">{item.symbols}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-border px-4 py-6 text-center text-xs text-muted-foreground">
+                The result table stays empty until at least one stock reaches the paper’s strict 2,349-surface sample and the offline expanding-window run completes.
+              </div>
+            )}
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="rounded-md border border-sky-700/20 bg-sky-950/[0.025] p-4">
+                <p className="terminal-label">Replicated without shortcuts</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{dynamic.paper_design.dynamic_covariance}. {dynamic.paper_design.score_forecast}. {dynamic.paper_design.mcs}.</p>
+              </div>
+              <div className="rounded-md border border-amber-600/20 bg-amber-950/[0.02] p-4">
+                <p className="terminal-label">Dataset boundary</p>
+                <p className="mt-2 text-xs leading-5 text-muted-foreground">{dynamic.nse_adaptation.reason}</p>
+              </div>
+            </div>
+            <p className="text-[10px] leading-4 text-muted-foreground">
+              The model protocol is replicated exactly, but this is not a numerical reproduction of the paper’s proprietary Bloomberg FX dataset. NSE tenors: {dynamic.nse_adaptation.nse_maturity_days.join("/")} days; paper tenors: {dynamic.nse_adaptation.paper_maturities.join("/")}.{" "}
+              <a href={dynamic.paper_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-medium text-sky-700 hover:underline dark:text-sky-400">Read the paper <ExternalLink className="size-3" /></a>
+            </p>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="overflow-hidden border-emerald-700/25">
         <CardHeader className="border-b border-border/70 bg-emerald-950/[0.025]">

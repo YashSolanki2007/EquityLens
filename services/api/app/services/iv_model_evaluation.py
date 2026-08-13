@@ -14,6 +14,7 @@ from app.core.cache import FileCache, cache_key
 from app.core.config import get_settings
 from app.core.db import get_session_factory
 from app.models import IVModelEvaluation
+from app.services.market_data.dynamic_functional_iv import get_cached_nse_replication
 from app.services.market_data.iv_surface import (
     EXPLAINED_VARIANCE_TARGET_PERCENT,
     MINIMUM_VALIDATION_SURFACES,
@@ -433,6 +434,15 @@ async def path_dependent_historical_backtest(
     )
 
 
+async def dynamic_functional_historical_backtest() -> dict[str, Any]:
+    """Load the offline exact-design result without blocking an API request."""
+
+    return await asyncio.to_thread(
+        get_cached_nse_replication,
+        cached_surface_histories(),
+    )
+
+
 async def _build_candidate(symbol: str, now: datetime) -> tuple[dict[str, Any] | None, str | None]:
     try:
         dates, surfaces = await load_historical_surfaces(symbol, force_refresh=True)
@@ -644,9 +654,10 @@ async def evaluation_report() -> dict[str, Any]:
         "target_surfaces_per_symbol": TARGET_HISTORY_SURFACES,
         "source": "Official NSE current and legacy F&O bhavcopies",
     }
-    historical_backtest, path_dependent_backtest = await asyncio.gather(
+    historical_backtest, path_dependent_backtest, dynamic_functional_backtest = await asyncio.gather(
         asyncio.to_thread(cached_historical_backtest),
         path_dependent_historical_backtest(),
+        dynamic_functional_historical_backtest(),
     )
 
     if len(scored) < EVIDENCE_TARGET:
@@ -703,6 +714,7 @@ async def evaluation_report() -> dict[str, Any]:
         "surface_history_coverage": surface_history_coverage,
         "historical_backtest": historical_backtest,
         "path_dependent_backtest": path_dependent_backtest,
+        "dynamic_functional_backtest": dynamic_functional_backtest,
         "thresholds": {
             "fpca_explained_variance_healthy_percent": (
                 EXPLAINED_VARIANCE_TARGET_PERCENT
